@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"mvdan.cc/xurls"
 	"os/exec"
 	"os"
 	"regexp"
-
-	log "github.com/sirupsen/logrus"
 	"strconv"
 	"strings"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	log "github.com/sirupsen/logrus"
+	"mvdan.cc/xurls"
 )
 
 var Bot *tgbotapi.BotAPI

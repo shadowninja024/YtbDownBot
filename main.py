@@ -300,8 +300,8 @@ async def main():
                         break
                     if file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
                         chosen_format = f
-                        if mode == 'a' and not (chosen_format['acodec'].startswith('mp3')): #or chosen_format['acodec'].startswith('mp4a')):
-                            ffmpeg_av = FFMpegAV(chosen_format, audio_only=True if mode == 'a' else False)
+                        if mode == 'a' and not (chosen_format['ext'] == 'mp3'): #or chosen_format['acodec'].startswith('mp4a')):
+                            ffmpeg_av = FFMpegAV(chosen_format, audio_only=True)
                         break
 
             else:
@@ -317,8 +317,8 @@ async def main():
                     ffmpeg_av = FFMpegAV(chosen_format, audio_only=True if mode == 'a' else False)
                 if (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
                     chosen_format = entry
-                    if mode == 'a' and not (chosen_format['acodec'].startswith('mp3')): #or chosen_format['acodec'].startswith('mp4a')):
-                        ffmpeg_av = FFMpegAV(chosen_format, audio_only=True if mode == 'a' else False)
+                    if mode == 'a' and not (chosen_format['ext'] == 'mp3'): #or chosen_format['acodec'].startswith('mp4a')):
+                        ffmpeg_av = FFMpegAV(chosen_format, audio_only=True)
 
 
             try:

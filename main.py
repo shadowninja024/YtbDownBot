@@ -161,12 +161,17 @@ def video_format(url):
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3719.5 Safari/537.36'
 
 def video_size(url, http_headers=None):
+    size = 0
     head_req = request.Request(url, method='HEAD', headers=http_headers)
-    try:
-        with request.urlopen(head_req) as resp:
-            return int(resp.headers['Content-Length'])
-    except:
-        return 1479*1024*1024*1024 # trying upload file even if failed to get size
+    with request.urlopen(head_req) as resp:
+        size = int(resp.headers['Content-Length'])
+    if size != 0:
+        return size
+    get_req = request.Request(url, method='GET', headers=http_headers)
+    with request.urlopen(get_req) as resp:
+        size = int(resp.headers['Content-Length'])
+    
+    return size
 
 
 

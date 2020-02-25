@@ -1,6 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
+
+export PATH=${PATH}:/usr/local/bin:/usr/sbin
 
 pip3 install youtube-dl
-
-cron
-exec ./YtbDownBot
+crond
+exec python3 main.py

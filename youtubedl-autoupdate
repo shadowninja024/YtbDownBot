@@ -1,4 +1,5 @@
 #!/bin/sh
 
-pip3 install -U youtube-dl
+export PATH=${PATH}:/usr/local/bin:/usr/sbin
 
+pip3 install -U youtube-dl

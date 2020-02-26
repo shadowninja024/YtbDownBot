@@ -426,7 +426,8 @@ async def _on_message(message, log):
                 video_note = False if cmd == 'a' or force_document else True
                 voice_note = True if cmd == 'a' else False
                 attributes = ((attributes,) if not force_document else None)
-                await client.send_file(CHAT_WITH_BOT_ID, file,
+
+                await client.send_file(bot_entity, file,
                                        video_note=video_note,
                                        voice_note=voice_note,
                                        attributes=attributes,
@@ -439,7 +440,6 @@ async def _on_message(message, log):
 api_id = int(os.environ['API_ID'])
 api_hash = os.environ['API_HASH']
 
-CHAT_WITH_BOT_ID = os.environ['CHAT_WITH_BOT_ID']
 BOT_AGENT_CHAT_ID = int(os.environ['BOT_AGENT_CHAT_ID'])
 
 # YTDL_LAMBDA_URL = os.environ['YTDL_LAMBDA_URL']
@@ -448,6 +448,7 @@ BOT_AGENT_CHAT_ID = int(os.environ['BOT_AGENT_CHAT_ID'])
 client = TelegramClient(StringSession(get_client_session()), api_id, api_hash)
 bot = TelegramClient('bot', api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
 _bot = Bot(token=os.environ['BOT_TOKEN'])
+bot_entity = None
 
 vid_format = '((best[ext=mp4,height<=1080]+best[ext=mp4,height<=480])[protocol^=http]/best[ext=mp4,height<=1080]+best[ext=mp4,height<=480]/best[ext=mp4]+worst[ext=mp4]/best[ext=mp4]/(bestvideo[ext=mp4,height<=1080]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]))[protocol^=http]/bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
 worst_video_format = 'best[ext=mp4,height<=360]/bestvideo[ext=mp4,height<=360]+bestaudio[ext=m4a]/best'
@@ -461,10 +462,16 @@ available_cmds = ['start', 'ping', 'a', 'w'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500
 
+
+async def init_bot_enitty():
+    global bot_entity
+    bot_entity = await client.get_input_entity(os.environ['CHAT_WITH_BOT_ID'])
+
 if __name__ == '__main__':
     app = web.Application()
     app.add_routes([web.post('/bot', on_message)])
     client.start()
     asyncio.get_event_loop().create_task(bot._run_until_disconnected())
+    asyncio.get_event_loop().create_task(init_bot_enitty())
     asyncio.get_event_loop().create_task(web.run_app(app))
     client.run_until_disconnected()

@@ -2,7 +2,7 @@
 import typing
 import ffmpeg
 import asyncio
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 
 
 class DumbReader(typing.BinaryIO):
@@ -153,7 +153,8 @@ class URLav(DumbReader):
     @staticmethod
     async def create(url, headers=None):
         u = URLav()
-        u.session = await ClientSession().__aenter__()
+        timeout = ClientTimeout(sock_read=10800, sock_connect=20, connect=25)
+        u.session = await ClientSession(timeout=timeout).__aenter__()
         u.request = await u.session.get(url, headers=headers)
         # u.request = await asks.get(url, headers=headers, stream=True, max_redirects=5)
         # u.body = u.request.body(timeout=14400)

@@ -1,4 +1,3 @@
-
 import m3u8
 import asyncio
 import json
@@ -106,6 +105,7 @@ def m3u8_parse_url(url):
         return url
     else:
         return m3u8._parsed_url(url) + '/'
+
 
 async def m3u8_video_size(url, http_headers=None):
     m3u8_data = None

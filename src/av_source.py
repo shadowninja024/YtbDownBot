@@ -1,4 +1,3 @@
-
 import typing
 import ffmpeg
 import asyncio
@@ -8,44 +7,64 @@ from aiohttp import ClientSession, ClientTimeout
 class DumbReader(typing.BinaryIO):
     def write(self, s: typing.Union[bytes, bytearray]) -> int:
         pass
+
     def mode(self) -> str:
         pass
+
     def name(self) -> str:
         pass
+
     def close(self) -> None:
         pass
+
     def closed(self) -> bool:
         pass
+
     def fileno(self) -> int:
         pass
+
     def flush(self) -> None:
         pass
+
     def isatty(self) -> bool:
         pass
+
     def readable(self) -> bool:
         pass
+
     def readline(self, limit: int = -1) -> typing.AnyStr:
         pass
+
     def readlines(self, hint: int = -1) -> typing.List[typing.AnyStr]:
         pass
+
     def seek(self, offset: int, whence: int = 0) -> int:
         pass
+
     def seekable(self) -> bool:
         pass
+
     def tell(self) -> int:
         pass
+
     def truncate(self, size: int = None) -> int:
         pass
+
     def writable(self) -> bool:
         pass
+
     def write(self, s: typing.AnyStr) -> int:
         pass
+
     def writelines(self, lines: typing.List[typing.AnyStr]) -> None:
         pass
+
     def __enter__(self) -> 'typing.IO[typing.AnyStr]':
         pass
+
     def __exit__(self, type, value, traceback) -> None:
         pass
+
 
 class FFMpegAV(DumbReader):
 
@@ -66,7 +85,7 @@ class FFMpegAV(DumbReader):
         if audio_only:
             ff.format = 'mp3'
             acodec = None
-            if 'acodec' in  vformat and vformat['acodec'] is not None:
+            if 'acodec' in vformat and vformat['acodec'] is not None:
                 # if vformat['acodec'].startswith('mp4a'):
                 #     acodec = 'm4a'
                 if vformat['acodec'].startswith('mp3'):
@@ -131,7 +150,7 @@ class FFMpegAV(DumbReader):
             _data = await self.stream.stdout.read(n)
             if len(_data) == 0:
                 break
-            buf +=  _data
+            buf += _data
         if len(buf) > n != -1:
             self._buf = buf[n:]
             return buf[:n]
@@ -178,7 +197,6 @@ class URLav(DumbReader):
             return buf[:n]
         else:
             return buf
-
 
     async def close(self) -> None:
         # self.request.release()

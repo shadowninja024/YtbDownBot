@@ -28,6 +28,8 @@ for bypass limit in 50MB) and bot:
   6. Telegram client session string for telethon StringSession:
   `CLIENT_SESSION`
 
+Note: for deploying webhook branch you must set also webhook url via calling `https://api.telegram.org/bot<bot-token>/setWebhook?url=<webhook-url>` (`webhook-url` path is `bot_domanin+/bot` like `mybot.com/bot`) Use master branch if you want to use polling instead.
+
 Build by:
 `go build`
 

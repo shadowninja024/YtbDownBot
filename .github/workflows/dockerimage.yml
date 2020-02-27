@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - webhook
     paths-ignore:
       - '**.md'
 jobs:

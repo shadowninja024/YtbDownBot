@@ -201,7 +201,7 @@ async def _on_message(message, log):
 
     if len(urls) == 0:
         log.info('Message without url: ' + msg_txt)
-        await bot.send_message(chat_id, 'Please send me torrent file, link or magnet link', reply_to=msg_id)
+        await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         return
 
     for u in urls:

@@ -85,22 +85,26 @@ async def share_content_with_user(message):
 
 
 async def _on_message_task(message):
-    async with bot.action(message['chat']['id'], 'file'):
-        chat_id = message['from']['id']
-        msg_id = message['message_id']
-        log = new_logger(chat_id, msg_id)
-        try:
-            await _on_message(message, log)
-        except HTTPError as e:
-            # crashing to try change ip
-            # otherwise youtube.com will not allow us
-            # to download any video for some time
-            if e.response.status_code == 429:
-                log.critical(e)
-                os.abort()
-        except Exception as e:
-            log.exception(e)
-            await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+    try:
+        async with bot.action(message['chat']['id'], 'file'):
+            chat_id = message['from']['id']
+            msg_id = message['message_id']
+            log = new_logger(chat_id, msg_id)
+            try:
+                await _on_message(message, log)
+            except HTTPError as e:
+                # crashing to try change ip
+                # otherwise youtube.com will not allow us
+                # to download any video for some time
+                if e.response.status_code == 429:
+                    log.critical(e)
+                    os.abort()
+            except Exception as e:
+                log.exception(e)
+                await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+    except Exception as e:
+        print(e)
+
 
 # extract telegram command from message
 def cmd_from_message(message):
@@ -143,6 +147,9 @@ async def _on_message(message, log):
 
     msg_id = message['message_id']
     chat_id = message['chat']['id']
+    if 'text' not in message:
+        await bot.send_message(chat_id, 'Please send me a video link', reply_to=msg_id)
+        return
     msg_txt = message['text']
 
     log.info('message: ' + msg_txt)

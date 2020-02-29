@@ -255,9 +255,7 @@ async def _on_message(message, log):
                     await bot.send_message(chat_id, str(e), reply_to=msg_id)
                     continue
             else:
-                log.error(e)
-                await bot.send_message(chat_id, str(e), reply_to=msg_id)
-                continue
+                raise
 
         entries = None
         if '_type' in vinfo and vinfo['_type'] == 'playlist':

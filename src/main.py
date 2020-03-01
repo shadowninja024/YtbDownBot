@@ -65,7 +65,7 @@ async def on_callback(callback):
     log = new_logger(from_id, msg_id)
     while True:
         try:
-            await _on_callback(from_id, msg_id, data, user, log)
+            await _on_callback(msg_id, data, user, log)
         except HTTPError as e:
             if e.response.status_code == 409:
                 log.warning('document update conflict, trying sync with db...')
@@ -80,7 +80,7 @@ async def on_callback(callback):
         break
 
 
-async def _on_callback(from_id, msg_id, data, user, log):
+async def _on_callback(msg_id, data, user, log):
     key, value = data.split(':')
     if key == 'default_media_type':
         if int(value) == users.DefaultMediaType.Video.value:
@@ -114,7 +114,7 @@ async def _on_callback(from_id, msg_id, data, user, log):
         await bot.delete_messages(bot_entity, msg_id)
         return
 
-    await send_settings(from_id, msg_id)
+    await send_settings(user, msg_id)
 
 async def on_message(request):
     try:
@@ -211,8 +211,8 @@ async def extract_url_info(ydl, url, params):
     #         return await req.json()
     return await asyncio.get_event_loop().run_in_executor(None, ydl.extract_info, url, False)
 
-async def send_settings(id, edit_id=None):
-    user = await users.User.init(id)
+
+async def send_settings(user, edit_id=None):
     buttons = None
     if user.default_media_type == users.DefaultMediaType.Video.value:
         buttons = [

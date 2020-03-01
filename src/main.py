@@ -65,7 +65,7 @@ async def on_callback(callback):
     log = new_logger(from_id, msg_id)
     while True:
         try:
-            await _on_callback(msg_id, data, user, log)
+            await _on_callback(from_id, msg_id, data, user, log)
         except HTTPError as e:
             if e.response.status_code == 409:
                 log.warning('document update conflict, trying sync with db...')
@@ -80,7 +80,7 @@ async def on_callback(callback):
         break
 
 
-async def _on_callback(msg_id, data, user, log):
+async def _on_callback(from_id, msg_id, data, user, log):
     key, value = data.split(':')
     if key == 'default_media_type':
         if int(value) == users.DefaultMediaType.Video.value:
@@ -114,7 +114,7 @@ async def _on_callback(msg_id, data, user, log):
         await bot.delete_messages(bot_entity, msg_id)
         return
 
-    await send_settings(user, msg_id)
+    await send_settings(user, from_id, msg_id)
 
 async def on_message(request):
     try:
@@ -212,7 +212,7 @@ async def extract_url_info(ydl, url, params):
     return await asyncio.get_event_loop().run_in_executor(None, ydl.extract_info, url, False)
 
 
-async def send_settings(user, edit_id=None):
+async def send_settings(user, user_id, edit_id=None):
     buttons = None
     if user.default_media_type == users.DefaultMediaType.Video.value:
         buttons = [
@@ -233,7 +233,7 @@ async def send_settings(user, edit_id=None):
             [Button.inline('❌', data=':')]
         ]
     if edit_id is None:
-        await bot.send_message(id, '⚙SETTINGS', buttons=buttons)
+        await bot.send_message(user_id, '⚙SETTINGS', buttons=buttons)
     else:
         msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
         await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
@@ -257,6 +257,8 @@ async def _on_message(message, log):
     playlist_start = None
     playlist_end = None
     y_format = None
+
+    user = None
     # check cmd and choose video format
     if cmd is not None:
         if cmd not in available_cmds:
@@ -269,7 +271,8 @@ async def _on_message(message, log):
             await bot.send_message(chat_id, 'pong')
             return
         elif cmd == 'settings':
-            await send_settings(chat_id)
+            user = await users.User.init(chat_id)
+            await send_settings(user, chat_id)
             return
         elif cmd in playlist_cmds:
             urls_count = len(urls)
@@ -309,7 +312,8 @@ async def _on_message(message, log):
         await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         return
 
-    user = await users.User.init(chat_id)
+    if user is None:
+        user = await users.User.init(chat_id)
     if user.default_media_type == users.DefaultMediaType.Audio.value:
         cmd = 'a'
 

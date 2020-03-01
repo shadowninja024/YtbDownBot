@@ -73,6 +73,9 @@ class User:
         self.settings['video_caption'] = toggle
         await asyncio.get_event_loop().run_in_executor(None, self.settings.save)
 
+    async def sync_with_db(self):
+        await asyncio.get_event_loop().run_in_executor(None, self.settings.fetch)
+
 
 client = Cloudant(os.environ['CLOUDANT_USERNAME'],
                   os.environ['CLOUDANT_PASSWORD'],

@@ -60,9 +60,28 @@ def new_logger(user_id, msg_id):
 async def on_callback(callback):
     from_id = callback['from']['id']
     msg_id = callback['message']['message_id']
-    key, value = callback['data'].split(':')
+    data = callback['data']
     user = await users.User.init(from_id)
     log = new_logger(from_id, msg_id)
+    while True:
+        try:
+            await _on_callback(from_id, msg_id, data, user, log)
+        except HTTPError as e:
+            if e.response.status_code == 409:
+                log.warning('document update conflict, trying sync with db...')
+                await user.sync_with_db()
+                continue
+            else:
+                log.exception(e)
+                break
+        except Exception as e:
+            log.exception(e)
+            break
+        break
+
+
+async def _on_callback(from_id, msg_id, data, user, log):
+    key, value = data.split(':')
     if key == 'default_media_type':
         if int(value) == users.DefaultMediaType.Video.value:
             log.info('set default media type to {}'.format(users.DefaultMediaType.Audio))

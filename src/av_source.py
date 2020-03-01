@@ -110,7 +110,7 @@ class FFMpegAV(DumbReader):
             _fstream = _finput.output('pipe:',
                                       format='mp4',
                                       vcodec='copy',
-                                      acodec='copy',
+                                      acodec='mp3',
                                       movflags='frag_keyframe')
         if aformat:
             # args = _fstream.global_args('headers',
@@ -122,7 +122,7 @@ class FFMpegAV(DumbReader):
             #                             '-map',
             #                             '1:a').compile()
             args = _fstream.compile()
-            args = args[:-1] + ['-map', '1:v', '-map', '0:a'] + [args[-1]]
+            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,
@@ -172,7 +172,7 @@ class URLav(DumbReader):
     @staticmethod
     async def create(url, headers=None):
         u = URLav()
-        timeout = ClientTimeout(sock_read=10800, sock_connect=20, connect=25)
+        timeout = ClientTimeout(total=7200)
         u.session = await ClientSession(timeout=timeout).__aenter__()
         u.request = await u.session.get(url, headers=headers)
         # u.request = await asks.get(url, headers=headers, stream=True, max_redirects=5)

@@ -1,9 +1,10 @@
 #!/bin/python3
 
 import sys, os
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button, functions, types
 from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio
 from telethon.sessions import StringSession, SQLiteSession
+from telethon.tl.functions.channels import DeleteMessagesRequest
 import traceback
 import asyncio
 import logging
@@ -14,6 +15,7 @@ from urlextract import URLExtract
 import re
 import av_utils
 import av_source
+import users
 import inspect
 import mimetypes
 from aiogram import Bot
@@ -55,13 +57,52 @@ def new_logger(user_id, msg_id):
     return logger
 
 
+async def on_callback(callback):
+    from_id = callback['from']['id']
+    msg_id = callback['message']['message_id']
+    key, value = callback['data'].split(':')
+    user = await users.User.init(from_id)
+    if key == 'default_media_type':
+        if int(value) == users.DefaultMediaType.Video.value:
+            await user.set_default_media_type(users.DefaultMediaType.Audio)
+        else:
+            await user.set_default_media_type(users.DefaultMediaType.Video)
+    elif key == 'video_format':
+        value = int(value)
+        if value == users.VideoFormat.LOW.value:
+            await user.set_video_format(users.VideoFormat.MED)
+        elif value == users.VideoFormat.MED.value:
+            await user.set_video_format(users.VideoFormat.HIGH)
+        elif value == users.VideoFormat.HIGH.value:
+            await user.set_video_format(users.VideoFormat.LOW)
+    elif key == 'audio_caption':
+        value = not (1 if value == 'True' else 0)
+        await user.set_audio_caption(value)
+    elif key == 'video_caption':
+        value = not (1 if value == 'True' else 0)
+        await user.set_video_caption(value)
+    elif key == '':
+        global bot_entity
+        await bot.delete_messages(bot_entity, msg_id)
+        return
+
+    await send_settings(from_id, msg_id)
+
 async def on_message(request):
     try:
         req_data = await request.json()
-        message = req_data['message']
 
+        if 'callback_query' in req_data:
+            asyncio.get_event_loop().create_task(on_callback(req_data['callback_query']))
+            return web.Response(status=200)
+
+        message = req_data['message']
         if message['from']['id'] == BOT_AGENT_CHAT_ID:
-            await share_content_with_user(message)
+            try:
+                await share_content_with_user(message)
+            except Exception as e:
+                if 'Reply message not found' in str(e):
+                    await share_content_with_user(message, with_reply=False)
             return web.Response(status=200)
 
         asyncio.get_event_loop().create_task(_on_message_task(message))
@@ -72,16 +113,17 @@ async def on_message(request):
 
 
 # share uploaded by client api file to user
-async def share_content_with_user(message):
-    _user_id, _reply_msg_id = message['caption'].split(':')
+async def share_content_with_user(message, with_reply=True):
+    _user_id, _reply_msg_id, user_caption = message['caption'].split(':')
     user_id = int(_user_id)
-    reply_msg_id = int(_reply_msg_id)
+    reply_msg_id = int(_reply_msg_id) if with_reply else None
+    caption = user_caption if user_caption != '' else None
     if 'video' in message:
-        await _bot.send_video(user_id, message['video']['file_id'], reply_to_message_id=reply_msg_id)
+        await _bot.send_video(user_id, message['video']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
     elif 'audio' in message:
-        await _bot.send_audio(user_id, message['audio']['file_id'], reply_to_message_id=reply_msg_id)
+        await _bot.send_audio(user_id, message['audio']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
     elif 'document' in message:
-        await _bot.send_document(user_id, message['document']['file_id'], reply_to_message_id=reply_msg_id)
+        await _bot.send_document(user_id, message['document']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
 
 
 async def _on_message_task(message):
@@ -126,7 +168,7 @@ def dict_to_list(_dict):
     return ret
 
 
-async def extract_url_info(url, params):
+async def extract_url_info(ydl, url, params):
     # data = {
     #     "url": url,
     #     **params
@@ -137,9 +179,34 @@ async def extract_url_info(url, params):
     # async with ClientSession() as session:
     #     async with session.post(YTDL_LAMBDA_URL, json=data, headers=headers, timeout=14400) as req:
     #         return await req.json()
-    ydl = youtube_dl.YoutubeDL(params=params)
     return await asyncio.get_event_loop().run_in_executor(None, ydl.extract_info, url, False)
 
+async def send_settings(id, edit_id=None):
+    user = await users.User.init(id)
+    buttons = None
+    if user.default_media_type == users.DefaultMediaType.Video.value:
+        buttons = [
+            [Button.inline('🎬⤵️',
+                          data='default_media_type:'+str(users.DefaultMediaType.Video.value)),
+            Button.inline(str(user.video_format)+'p',
+                          data='video_format:' + str(user.video_format))],
+            [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
+                          data='video_caption:' + str(user.video_caption)),
+            Button.inline('❌', data=':')]
+        ]
+    else:
+        buttons = [
+            [Button.inline('🎧⤵️',
+                          data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
+            Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+                          data='audio_caption:' + str(user.audio_caption))],
+            [Button.inline('❌', data=':')]
+        ]
+    if edit_id is None:
+        await bot.send_message(id, '⚙SETTINGS', buttons=buttons)
+    else:
+        msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
+        await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
 
 async def _on_message(message, log):
     if message['from']['is_bot']:
@@ -170,6 +237,9 @@ async def _on_message(message, log):
             return
         elif cmd == 'ping':
             await bot.send_message(chat_id, 'pong')
+            return
+        elif cmd == 'settings':
+            await send_settings(chat_id)
             return
         elif cmd in playlist_cmds:
             urls_count = len(urls)
@@ -204,17 +274,34 @@ async def _on_message(message, log):
             # wordst video cmd
             y_format = worst_video_format
 
-    if y_format == None:
-        y_format = vid_format
-
     if len(urls) == 0:
         log.info('Message without url: ' + msg_txt)
         await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         return
 
+    user = await users.User.init(chat_id)
+    if user.default_media_type == users.DefaultMediaType.Audio.value:
+        cmd = 'a'
+
+    preferred_formats = None
+    if cmd != 'a':
+        if y_format is not None:
+            preferred_formats = [y_format]
+        elif user.video_format == users.VideoFormat.HIGH.value:
+            preferred_formats = [vid_fhd_format, vid_hd_format, vid_nhd_format]
+        elif user.video_format == users.VideoFormat.MED.value:
+            preferred_formats = [vid_hd_format, vid_nhd_format]
+        elif user.video_format == users.VideoFormat.LOW.value:
+            preferred_formats = [vid_nhd_format]
+    else:
+        if y_format is not None:
+            preferred_formats = [y_format]
+        else:
+            preferred_formats = [audio_format]
+
     for u in urls:
-        params = {'format': y_format,
-                  'noplaylist': True,
+        vinfo = None
+        params = {'noplaylist': True,
                   'youtube_include_dash_manifest': False,
                   'quiet': True,
                   'no_color': True}
@@ -228,14 +315,39 @@ async def _on_message(message, log):
         else:
             params['playlist_items'] = '1'
 
-        try:
-            vinfo = await extract_url_info(u, params)
-            log.debug('video info received')
-        except Exception as e:
-            if "Please log in or sign up to view this video" in str(e):
-                if 'vk.com' in u:
-                    params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
-                    params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
+        ydl = youtube_dl.YoutubeDL(params=params)
+        recover_playlist_index = None  # to save last playlist position if finding format failed
+        for ip, pref_format in enumerate(preferred_formats):
+            try:
+                params['format'] = pref_format
+                if recover_playlist_index is not None:
+                    params['playliststart'] += recover_playlist_index
+                ydl.params = params
+                if vinfo is None:
+                    vinfo = await extract_url_info(ydl, u, params)
+                    log.debug('video info received')
+                else:
+                    params['format'] = pref_format
+                    vinfo['requested_formats'] = None
+                    vinfo = ydl.process_video_result(vinfo, download=False)
+                    log.debug('video info reprocessed with new format')
+            except Exception as e:
+                if "Please log in or sign up to view this video" in str(e):
+                    if 'vk.com' in u:
+                        params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
+                        params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
+                        try:
+                            vinfo = await extract_url_info(u, params)
+                        except Exception as e:
+                            log.error(e)
+                            await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                            continue
+                    else:
+                        log.error(e)
+                        await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                        continue
+                elif 'are video-only' in str(e):
+                    params['format'] = 'bestvideo[ext=mp4]'
                     try:
                         vinfo = await extract_url_info(u, params)
                     except Exception as e:
@@ -243,209 +355,209 @@ async def _on_message(message, log):
                         await bot.send_message(chat_id, str(e), reply_to=msg_id)
                         continue
                 else:
-                    log.error(e)
-                    await bot.send_message(chat_id, str(e), reply_to=msg_id)
-                    continue
-            elif 'are video-only' in str(e):
-                params['format'] = 'bestvideo[ext=mp4]'
-                try:
-                    vinfo = await extract_url_info(u, params)
-                except Exception as e:
-                    log.error(e)
-                    await bot.send_message(chat_id, str(e), reply_to=msg_id)
-                    continue
+                    raise
+
+            entries = None
+            if '_type' in vinfo and vinfo['_type'] == 'playlist':
+                entries = vinfo['entries']
             else:
-                log.error(e)
-                await bot.send_message(chat_id, str(e), reply_to=msg_id)
-                continue
+                entries = [vinfo]
 
-        entries = None
-        if '_type' in vinfo and vinfo['_type'] == 'playlist':
-            entries = vinfo['entries']
-        else:
-            entries = [vinfo]
+            for ie, entry in enumerate(entries):
+                formats = entry.get('requested_formats')
+                file_size = None
+                chosen_format = None
+                ffmpeg_av = None
+                http_headers = None
+                if 'http_headers' not in entry:
+                    if len(formats) > 0 and 'http_headers' in formats[0]:
+                        http_headers = formats[0]['http_headers']
+                else:
+                    http_headers = entry['http_headers']
 
-        for entry in entries:
-            formats = entry.get('requested_formats')
-            file_size = None
-            chosen_format = None
-            ffmpeg_av = None
-            http_headers = None
-            if 'http_headers' not in entry:
-                if len(formats) > 0 and 'http_headers' in formats[0]:
-                    http_headers = formats[0]['http_headers']
-            else:
-                http_headers = entry['http_headers']
-
-            if formats is not None:
-                for i, f in enumerate(formats):
-                    if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
-                        continue
-                    if 'm3u8' in f['protocol']:
-                        file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
-                    else:
-                        if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
-                            file_size = f['filesize']
+                if formats is not None:
+                    for i, f in enumerate(formats):
+                        if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                            # await bot.send_message(chat_id, "ERROR: Failed find suitable format for: " + entry['title'], reply_to=msg_id)
+                            continue
+                        if 'm3u8' in f['protocol']:
+                            file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
                         else:
-                            file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
-
-                    # Dash video
-                    if f['protocol'] == 'https' and \
-                            (True if ('acodec' in f and (f['acodec'] == 'none' or f['acodec'] == None)) else False):
-                        vformat = f
-                        mformat = None
-                        vsize = 0
-                        if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None:
-                            vsize = vformat['filesize']
-                        else:
-                            vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
-                        msize = 0
-                        # if there is one more format than
-                        # it's likely an url to audio
-                        if len(formats) > i + 1:
-                            mformat = formats[i + 1]
-                            if 'filesize' in mformat and mformat['filesize'] != 0 and mformat['filesize'] is not None:
-                                msize = mformat['filesize']
+                            if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
+                                file_size = f['filesize']
                             else:
-                                msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                        file_size = vsize + msize + 10 * 1024 * 1024
-                        if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE:
-                            ffmpeg_av = await av_source.FFMpegAV.create(vformat,
-                                                                        mformat,
-                                                                        headers=dict_to_list(http_headers))
+                                file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
+
+                        # Dash video
+                        if f['protocol'] == 'https' and \
+                                (True if ('acodec' in f and (f['acodec'] == 'none' or f['acodec'] == None)) else False):
+                            vformat = f
+                            mformat = None
+                            vsize = 0
+                            if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None:
+                                vsize = vformat['filesize']
+                            else:
+                                vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
+                            msize = 0
+                            # if there is one more format than
+                            # it's likely an url to audio
+                            if len(formats) > i + 1:
+                                mformat = formats[i + 1]
+                                if 'filesize' in mformat and mformat['filesize'] != 0 and mformat['filesize'] is not None:
+                                    msize = mformat['filesize']
+                                else:
+                                    msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
+                            file_size = vsize + msize + 20 * 1024 * 1024
+                            if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE:
+                                ffmpeg_av = await av_source.FFMpegAV.create(vformat,
+                                                                            mformat,
+                                                                            headers=dict_to_list(http_headers))
+                                chosen_format = f
+                            break
+                        # m3u8
+                        if ('m3u8' in f['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
                             chosen_format = f
+                            ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                        audio_only=True if cmd == 'a' else False,
+                                                                        headers=dict_to_list(http_headers))
+                            break
+                        # regular video stream
+                        if file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
+                            chosen_format = f
+                            if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                            audio_only=True,
+                                                                            headers=dict_to_list(http_headers))
+                            break
+
+                else:
+                    if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                        # await bot.send_message(chat_id, "ERROR: Failed find suitable format for : " + entry['title'], reply_to=msg_id)
+                        # if 'playlist' in entry and entry['playlist'] is not None:
+                        recover_playlist_index = ie
                         break
-                    # m3u8
-                    if ('m3u8' in f['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
-                        chosen_format = f
+                    if 'm3u8' in entry['protocol']:
+                        file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
+                    else:
+                        if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
+                            file_size = entry['filesize']
+                        else:
+                            file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
+                    if ('m3u8' in entry['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                        chosen_format = entry
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                     audio_only=True if cmd == 'a' else False,
                                                                     headers=dict_to_list(http_headers))
-                        break
-                    # regular video stream
-                    if file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
-                        chosen_format = f
+                    elif (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                        chosen_format = entry
                         if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True,
                                                                         headers=dict_to_list(http_headers))
+
+                try:
+                    if chosen_format is None and ffmpeg_av is None:
+                        if len(preferred_formats) - 1 == ip:
+                            await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                            return
+                        # if 'playlist' in entry and entry['playlist'] is not None:
+                        recover_playlist_index = ie
                         break
-
-            else:
-                if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
-                    await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                    continue
-                if 'm3u8' in entry['protocol']:
-                    file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
-                else:
-                    if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
-                        file_size = entry['filesize']
-                    else:
-                        file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
-                if ('m3u8' in entry['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
-                    chosen_format = entry
-                    ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                audio_only=True if cmd == 'a' else False,
-                                                                headers=dict_to_list(http_headers))
-                elif (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
-                    chosen_format = entry
-                    if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
-                        ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                    audio_only=True,
-                                                                    headers=dict_to_list(http_headers))
-
-            try:
-                if chosen_format is None and ffmpeg_av is None:
-                    await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                    continue
-                if chosen_format['ext'] == 'unknown_video':
-                    mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
-                    ext = mimetypes.guess_extension(mime)
-                    if ext is None or ext == '':
-                        await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                        continue
-                    else:
-                        ext = ext[1:]
-                        if mime.split('/')[0] == 'audio' and ext == 'webm':
-                            # telegram treat webm audio as video
-                            # so use ogg ext to force audio
-                            chosen_format['ext'] = 'ogg'
+                    if chosen_format['ext'] == 'unknown_video':
+                        mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
+                        ext = mimetypes.guess_extension(mime)
+                        if ext is None or ext == '':
+                            await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                            continue
                         else:
-                            chosen_format['ext'] = ext
-                if cmd == 'a':
-                    # we don't know real size due to converting formats
-                    # so increase it in case of real size is less large then estimated
-                    file_size += 200000
+                            ext = ext[1:]
+                            if mime.split('/')[0] == 'audio' and ext == 'webm':
+                                # telegram treat webm audio as video
+                                # so use ogg ext to force audio
+                                chosen_format['ext'] = 'ogg'
+                            else:
+                                chosen_format['ext'] = ext
+                    if cmd == 'a':
+                        # we don't know real size due to converting formats
+                        # so increase it in case of real size is less large then estimated
+                        file_size += 200000
 
-                log.debug('uploading file')
-                upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(chosen_format['url'],
-                                                                                                   http_headers)
-                file_name = entry['title'] + '.' + \
-                            (chosen_format[
-                                 'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
-                file = await client.upload_file(upload_file,
-                                                file_name=file_name,
-                                                file_size=file_size,
-                                                http_headers=http_headers)
+                    log.debug('uploading file')
+                    upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(chosen_format['url'],
+                                                                                                       http_headers)
+                    file_name = entry['title'] + '.' + \
+                                (chosen_format[
+                                     'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                    file = await client.upload_file(upload_file,
+                                                    file_name=file_name,
+                                                    file_size=file_size,
+                                                    http_headers=http_headers)
 
-                width = height = duration = None
-                if cmd == 'a':
-                    if ('duration' not in entry and 'duration' not in chosen_format):
-                        # info = await av_utils.av_info(chosen_format['url'],
-                        #                               use_m3u8=('m3u8' in chosen_format['protocol']))
-                        info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
-                        duration = int(float(info['format']['duration']))
+                    width = height = duration = None
+                    if cmd == 'a':
+                        if ('duration' not in entry and 'duration' not in chosen_format):
+                            # info = await av_utils.av_info(chosen_format['url'],
+                            #                               use_m3u8=('m3u8' in chosen_format['protocol']))
+                            info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
+                            duration = int(float(info['format']['duration']))
+                        else:
+                            duration = int(entry['duration']) if 'duration' not in entry else int(entry['duration'])
+
+                    elif ('duration' not in entry and 'duration' not in chosen_format) or \
+                            ('width' not in chosen_format) or ('height' not in chosen_format):
+                        # info =  await av_utils.av_info(chosen_format['url'],
+                        #                                use_m3u8=('m3u8' in chosen_format['protocol']))
+                        info = await av_utils.av_info(chosen_format['url'])
+                        width = info['streams'][0]['width']
+                        height = info['streams'][0]['height']
+                        duration = info['format']['duration']
                     else:
-                        duration = int(entry['duration']) if 'duration' not in entry else int(entry['duration'])
+                        width, height, duration = chosen_format['width'], chosen_format['height'], \
+                                                  int(entry['duration']) if 'duration' not in entry else int(
+                                                      entry['duration'])
 
-                elif ('duration' not in entry and 'duration' not in chosen_format) or \
-                        ('width' not in chosen_format) or ('height' not in chosen_format):
-                    # info =  await av_utils.av_info(chosen_format['url'],
-                    #                                use_m3u8=('m3u8' in chosen_format['protocol']))
-                    info = await av_utils.av_info(chosen_format['url'])
-                    width = info['streams'][0]['width']
-                    height = info['streams'][0]['height']
-                    duration = info['format']['duration']
-                else:
-                    width, height, duration = chosen_format['width'], chosen_format['height'], \
-                                              int(entry['duration']) if 'duration' not in entry else int(
-                                                  entry['duration'])
+                    if upload_file is not None:
+                        if inspect.iscoroutinefunction(upload_file.close):
+                            await upload_file.close()
+                        else:
+                            upload_file.close()
 
-                if upload_file is not None:
-                    if inspect.iscoroutinefunction(upload_file.close):
-                        await upload_file.close()
+                    attributes = None
+                    if cmd == 'a':
+                        performer = entry['artist'] if ('artist' in entry) and \
+                                                       (entry['artist'] is not None) else None
+                        title = entry['alt_title'] if ('alt_title' in entry) and \
+                                                      (entry['alt_title'] is not None) else entry['title']
+                        attributes = DocumentAttributeAudio(duration, title=title, performer=performer)
                     else:
-                        upload_file.close()
+                        attributes = DocumentAttributeVideo(duration,
+                                                            width,
+                                                            height,
+                                                            supports_streaming=False if ffmpeg_av is not None else True)
+                    force_document = False
+                    if ffmpeg_av is None and (chosen_format['ext'] != 'mp4' and cmd != 'a'):
+                        force_document = True
+                    log.debug('sending file')
+                    video_note = False if cmd == 'a' or force_document else True
+                    voice_note = True if cmd == 'a' else False
+                    attributes = ((attributes,) if not force_document else None)
+                    caption = entry['title'] if (user.default_media_type == users.DefaultMediaType.Video.value
+                                                 and user.video_caption) or \
+                                                (user.default_media_type == users.DefaultMediaType.Audio.value
+                                                 and user.audio_caption) else ''
+                    recover_playlist_index = None
+                    await client.send_file(bot_entity, file,
+                                           video_note=video_note,
+                                           voice_note=voice_note,
+                                           attributes=attributes,
+                                           caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
+                                           force_document=force_document)
+                except Exception as e:
+                    print(e)
+                    traceback.print_exc()
 
-                attributes = None
-                if cmd == 'a':
-                    performer = entry['artist'] if ('artist' in entry) and \
-                                                   (entry['artist'] is not None) else None
-                    title = entry['alt_title'] if ('alt_title' in entry) and \
-                                                  (entry['alt_title'] is not None) else entry['title']
-                    attributes = DocumentAttributeAudio(duration, title=title, performer=performer)
-                else:
-                    attributes = DocumentAttributeVideo(duration,
-                                                        width,
-                                                        height,
-                                                        supports_streaming=False if ffmpeg_av is not None else True)
-                force_document = False
-                if ffmpeg_av is None and (chosen_format['ext'] != 'mp4' and cmd != 'a'):
-                    force_document = True
-                log.debug('sending file')
-                video_note = False if cmd == 'a' or force_document else True
-                voice_note = True if cmd == 'a' else False
-                attributes = ((attributes,) if not force_document else None)
-
-                await client.send_file(bot_entity, file,
-                                       video_note=video_note,
-                                       voice_note=voice_note,
-                                       attributes=attributes,
-                                       caption=str(chat_id) + ":" + str(msg_id),
-                                       force_document=force_document)
-            except Exception as e:
-                print(e)
-                traceback.print_exc()
+            if recover_playlist_index is None:
+                break
 
 
 api_id = int(os.environ['API_ID'])
@@ -462,6 +574,9 @@ _bot = Bot(token=os.environ['BOT_TOKEN'])
 bot_entity = None
 
 vid_format = '((best[ext=mp4,height<=1080]+best[ext=mp4,height<=480])[protocol^=http]/best[ext=mp4,height<=1080]+best[ext=mp4,height<=480]/best[ext=mp4]+worst[ext=mp4]/best[ext=mp4]/(bestvideo[ext=mp4,height<=1080]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]))[protocol^=http]/bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
+vid_fhd_format = '((best[ext=mp4][height<=1080][height>720])[protocol^=http]/best[ext=mp4][height<=1080][height>720]/bestvideo[ext=mp4][height<=1080][height>720]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/  (best[ext=mp4][height<=720][height>360])[protocol^=http]/best[ext=mp4][height<=720][height>360]/bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]) /  (best[ext=mp4][height<=360])[protocol^=http]/best[ext=mp4][height<=360]/bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/   best[ext=mp4]   /bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
+vid_hd_format = '((best[ext=mp4][height<=720][height>360])[protocol^=http]/best[ext=mp4][height<=720][height>360]/bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]) /  (best[ext=mp4][height<=360])[protocol^=http]/best[ext=mp4][height<=360]/bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/   best[ext=mp4]   /bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
+vid_nhd_format = '((best[ext=mp4][height<=360])[protocol^=http]/best[ext=mp4][height<=360]/bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/   best[ext=mp4]   /bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
 worst_video_format = 'best[ext=mp4,height<=360]/bestvideo[ext=mp4,height<=360]+bestaudio[ext=m4a]/best'
 audio_format = '((bestaudio[ext=m4a]/bestaudio[ext=mp3])[protocol^=http]/bestaudio/best[ext=mp4,height<=480]/best[ext=mp4]/best)[protocol!=http_dash_segments]'
 
@@ -469,7 +584,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'a', 'w'] + playlist_cmds
+available_cmds = ['start', 'ping', 'settings', 'a', 'w'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500
 

@@ -62,27 +62,36 @@ async def on_callback(callback):
     msg_id = callback['message']['message_id']
     key, value = callback['data'].split(':')
     user = await users.User.init(from_id)
+    log = new_logger(from_id, msg_id)
     if key == 'default_media_type':
         if int(value) == users.DefaultMediaType.Video.value:
+            log.info('set default media type to {}'.format(users.DefaultMediaType.Audio))
             await user.set_default_media_type(users.DefaultMediaType.Audio)
         else:
+            log.info('set default media type to {}'.format(users.DefaultMediaType.Video))
             await user.set_default_media_type(users.DefaultMediaType.Video)
     elif key == 'video_format':
         value = int(value)
         if value == users.VideoFormat.LOW.value:
+            log.info('set video format to {}'.format(users.VideoFormat.MED))
             await user.set_video_format(users.VideoFormat.MED)
         elif value == users.VideoFormat.MED.value:
+            log.info('set video format to {}'.format(users.VideoFormat.HIGH))
             await user.set_video_format(users.VideoFormat.HIGH)
         elif value == users.VideoFormat.HIGH.value:
+            log.info('set video format to {}'.format(users.VideoFormat.LOW))
             await user.set_video_format(users.VideoFormat.LOW)
     elif key == 'audio_caption':
         value = not (1 if value == 'True' else 0)
+        log.info('set audio captions to {}'.format(value))
         await user.set_audio_caption(value)
     elif key == 'video_caption':
         value = not (1 if value == 'True' else 0)
+        log.info('set video captions to {}'.format(value))
         await user.set_video_caption(value)
     elif key == '':
         global bot_entity
+        log.info('delete settings menu')
         await bot.delete_messages(bot_entity, msg_id)
         return
 

@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - webhook
+      - settings
     paths-ignore:
       - '**.md'
 jobs:

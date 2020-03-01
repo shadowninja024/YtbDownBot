@@ -112,6 +112,8 @@ async def on_message(request):
             except Exception as e:
                 if 'Reply message not found' in str(e):
                     await share_content_with_user(message, with_reply=False)
+                else:
+                    logging.exception(e)
             return web.Response(status=200)
 
         asyncio.get_event_loop().create_task(_on_message_task(message))

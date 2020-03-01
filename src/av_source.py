@@ -122,7 +122,8 @@ class FFMpegAV(DumbReader):
             #                             '-map',
             #                             '1:a').compile()
             args = _fstream.compile()
-            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + [args[-1]]
+            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + [
+                args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,

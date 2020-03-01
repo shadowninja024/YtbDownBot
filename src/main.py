@@ -116,6 +116,7 @@ async def _on_callback(from_id, msg_id, data, user, log):
 
     await send_settings(user, from_id, msg_id)
 
+
 async def on_message(request):
     try:
         req_data = await request.json()
@@ -153,7 +154,8 @@ async def share_content_with_user(message, with_reply=True):
     elif 'audio' in message:
         await _bot.send_audio(user_id, message['audio']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
     elif 'document' in message:
-        await _bot.send_document(user_id, message['document']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
+        await _bot.send_document(user_id, message['document']['file_id'], reply_to_message_id=reply_msg_id,
+                                 caption=caption)
 
 
 async def _on_message_task(message):
@@ -217,19 +219,19 @@ async def send_settings(user, user_id, edit_id=None):
     if user.default_media_type == users.DefaultMediaType.Video.value:
         buttons = [
             [Button.inline('🎬⤵️',
-                          data='default_media_type:'+str(users.DefaultMediaType.Video.value)),
-            Button.inline(str(user.video_format)+'p',
-                          data='video_format:' + str(user.video_format))],
+                           data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
+             Button.inline(str(user.video_format) + 'p',
+                           data='video_format:' + str(user.video_format))],
             [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
-                          data='video_caption:' + str(user.video_caption)),
-            Button.inline('❌', data=':')]
+                           data='video_caption:' + str(user.video_caption)),
+             Button.inline('❌', data=':')]
         ]
     else:
         buttons = [
             [Button.inline('🎧⤵️',
-                          data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
-            Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
-                          data='audio_caption:' + str(user.audio_caption))],
+                           data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
+             Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+                           data='audio_caption:' + str(user.audio_caption))],
             [Button.inline('❌', data=':')]
         ]
     if edit_id is None:
@@ -237,6 +239,7 @@ async def send_settings(user, user_id, edit_id=None):
     else:
         msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
         await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
+
 
 async def _on_message(message, log):
     if message['from']['is_bot']:
@@ -437,7 +440,8 @@ async def _on_message(message, log):
                             # it's likely an url to audio
                             if len(formats) > i + 1:
                                 mformat = formats[i + 1]
-                                if 'filesize' in mformat and mformat['filesize'] != 0 and mformat['filesize'] is not None:
+                                if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
+                                    'filesize'] is not None:
                                     msize = mformat['filesize']
                                 else:
                                     msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
@@ -517,8 +521,9 @@ async def _on_message(message, log):
                         file_size += 200000
 
                     log.debug('uploading file')
-                    upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(chosen_format['url'],
-                                                                                                       http_headers)
+                    upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
+                        chosen_format['url'],
+                        http_headers)
                     file_name = entry['title'] + '.' + \
                                 (chosen_format[
                                      'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)

@@ -1,4 +1,3 @@
-
 from cloudant.adapters import Replay429Adapter
 from cloudant.client import Cloudant
 import os
@@ -28,7 +27,7 @@ class User:
         if user_settings != None:
             user.settings = user_settings
             return user
-        user_id = 'user'+str(id)
+        user_id = 'user' + str(id)
         user_settings = {
             '_id': user_id,
             'default_media_type': DefaultMediaType.Video.value,

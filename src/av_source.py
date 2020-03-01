@@ -172,7 +172,7 @@ class URLav(DumbReader):
     @staticmethod
     async def create(url, headers=None):
         u = URLav()
-        timeout = ClientTimeout(sock_read=10800, sock_connect=20, connect=25)
+        timeout = ClientTimeout(total=7200)
         u.session = await ClientSession(timeout=timeout).__aenter__()
         u.request = await u.session.get(url, headers=headers)
         # u.request = await asks.get(url, headers=headers, stream=True, max_redirects=5)

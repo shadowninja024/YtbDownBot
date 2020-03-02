@@ -23,10 +23,17 @@ class User:
     @staticmethod
     async def init(id):
         user = User()
-        user_settings = await asyncio.get_event_loop().run_in_executor(None, get_user, id)
-        if user_settings != None:
+        user_settings = await get_user(id)
+        if user_settings is not None:
             user.settings = user_settings
+            change = await get_changes(user.settings['_id'])
+            print(change)
+            if change['changes'][-1]['rev'] != user.settings['_rev']:
+                # update doc from _changes request to eliminate reading operation
+                user.settings.update(change['doc'])
+                # await user.sync_with_db()
             return user
+
         user_id = 'user' + str(id)
         user_settings = {
             '_id': user_id,
@@ -35,8 +42,9 @@ class User:
             'audio_caption': False,
             'video_caption': False
         }
-        user_settings = await asyncio.get_event_loop().run_in_executor(None, create_user, user_settings)
+        user_settings = await create_user(user_settings)
         user.settings = user_settings
+        user_settings.update_field()
 
         return user
 
@@ -81,10 +89,14 @@ client = Cloudant(os.environ['CLOUDANT_USERNAME'],
                   url=os.environ['CLOUDANT_URL'],
                   adapter=Replay429Adapter(retries=10),
                   connect=True)
+db = client['ytbdownbot']
 
 
-def get_user(id):
-    db = client['ytbdownbot']
+async def get_user(id):
+    return await asyncio.get_event_loop().run_in_executor(None, _get_user, id)
+
+
+def _get_user(id):
     user_id = 'user' + str(id)
     if user_id in db:
         return db[user_id]
@@ -92,6 +104,19 @@ def get_user(id):
         return None
 
 
-def create_user(user):
-    db = client['ytbdownbot']
+async def create_user(user):
+    return await asyncio.get_event_loop().run_in_executor(None, _create_user, user)
+
+
+def _create_user(user):
     return db.create_document(user)
+
+
+async def get_changes(doc_id):
+    return await asyncio.get_event_loop().run_in_executor(None, _get_changes, doc_id)
+
+
+def _get_changes(doc_id):
+    changes = db.changes(doc_ids=[doc_id], filter='_doc_ids', include_docs=True)
+    for change in changes:
+        return change

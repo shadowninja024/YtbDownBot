@@ -63,7 +63,8 @@ async def on_callback(callback):
     data = callback['data']
     user = await users.User.init(from_id)
     log = new_logger(from_id, msg_id)
-    while True:
+    # retry in case of update conflict
+    for _ in range(15):
         try:
             await _on_callback(from_id, msg_id, data, user, log)
         except HTTPError as e:

@@ -27,7 +27,6 @@ class User:
         if user_settings is not None:
             user.settings = user_settings
             change = await get_changes(user.settings['_id'])
-            print(change)
             if change['changes'][-1]['rev'] != user.settings['_rev']:
                 # update doc from _changes request to eliminate reading operation
                 user.settings.update(change['doc'])

@@ -70,7 +70,11 @@ async def on_callback(callback):
         except HTTPError as e:
             if e.response.status_code == 409:
                 log.warning('document update conflict, trying sync with db...')
-                await user.sync_with_db()
+                try:
+                    await user.sync_with_db()
+                except HTTPError as e:
+                    if e.response.status_code == 404:
+                        user = await users.User.init(from_id, force_create=True)
                 continue
             else:
                 log.exception(e)

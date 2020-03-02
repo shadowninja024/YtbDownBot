@@ -21,10 +21,10 @@ class User:
         self.settings = None
 
     @staticmethod
-    async def init(id):
+    async def init(id, force_create=False):
         user = User()
         user_settings = await get_user(id)
-        if user_settings is not None:
+        if user_settings is not None and not force_create:
             user.settings = user_settings
             change = await get_changes(user.settings['_id'])
             if change['changes'][-1]['rev'] != user.settings['_rev']:
@@ -43,7 +43,6 @@ class User:
         }
         user_settings = await create_user(user_settings)
         user.settings = user_settings
-        user_settings.update_field()
 
         return user
 

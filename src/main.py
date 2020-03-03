@@ -465,7 +465,7 @@ async def _on_message(message, log):
                                                                         headers=dict_to_list(http_headers))
                             break
                         # regular video stream
-                        if file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
+                        if 0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
                             chosen_format = f
                             if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
@@ -491,7 +491,7 @@ async def _on_message(message, log):
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                     audio_only=True if cmd == 'a' else False,
                                                                     headers=dict_to_list(http_headers))
-                    elif (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                    elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
                         chosen_format = entry
                         if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
@@ -532,6 +532,7 @@ async def _on_message(message, log):
                     file_name = entry['title'] + '.' + \
                                 (chosen_format[
                                      'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                    file_size = file_size if file_size != 0 else 1500*1024*1024
                     file = await client.upload_file(upload_file,
                                                     file_name=file_name,
                                                     file_size=file_size,
@@ -587,7 +588,8 @@ async def _on_message(message, log):
                     attributes = ((attributes,) if not force_document else None)
                     caption = entry['title'] if (user.default_media_type == users.DefaultMediaType.Video.value
                                                  and user.video_caption) or \
-                                                (user.default_media_type == users.DefaultMediaType.Audio.value
+                                                (((user.default_media_type == users.DefaultMediaType.Audio.value) or
+                                                 (cmd == 'a'))
                                                  and user.audio_caption) else ''
                     recover_playlist_index = None
                     await client.send_file(bot_entity, file,

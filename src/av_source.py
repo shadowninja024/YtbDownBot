@@ -122,7 +122,7 @@ class FFMpegAV(DumbReader):
             #                             '-map',
             #                             '1:a').compile()
             args = _fstream.compile()
-            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + [
+            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + ['-fs', '1520435200'] + [
                 args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
@@ -131,6 +131,7 @@ class FFMpegAV(DumbReader):
             ff.stream = proc
         else:
             args = _fstream.compile()
+            args = args[:-1] + ['-fs', '1520435200'] + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,
@@ -165,6 +166,11 @@ class FFMpegAV(DumbReader):
         except:
             pass
 
+    def __del__(self):
+        try:
+            self.stream.kill()
+        except:
+            pass
 
 class URLav(DumbReader):
     def __init__(self):

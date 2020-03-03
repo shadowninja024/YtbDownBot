@@ -362,7 +362,7 @@ async def _on_message(message, log):
         for ip, pref_format in enumerate(preferred_formats):
             try:
                 params['format'] = pref_format
-                if recover_playlist_index is not None:
+                if recover_playlist_index is not None and 'playliststart' in params:
                     params['playliststart'] += recover_playlist_index
                 ydl.params = params
                 if vinfo is None:

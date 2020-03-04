@@ -2,6 +2,8 @@ import typing
 import ffmpeg
 import asyncio
 from aiohttp import ClientSession, ClientTimeout
+import cut_time
+from datetime import datetime
 
 
 class DumbReader(typing.BinaryIO):
@@ -72,14 +74,32 @@ class FFMpegAV(DumbReader):
         self._buf = b''
 
     @staticmethod
-    async def create(vformat, aformat=None, audio_only=False, headers=''):
+    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None):
         ff = FFMpegAV()
         # _finput = ffmpeg.input(vformat['url'], **{"user-agent": user_agent, "loglevel": "error"})
         _finput = None
+
+        cut_time_start = cut_time_end = None
+        if cut_time_range is not None:
+            cut_time_start, cut_time_end = cut_time_range
+            if cut_time_end is not None:
+
+                diff_time = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
+                if diff_time <= 0:
+                    raise Exception('Cut end time is bigger than all media duration')
+                cut_time_end = datetime.utcfromtimestamp(diff_time).time().isoformat()
+            cut_time_start = cut_time_start.isoformat()
+
         if aformat:
-            _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), i=aformat['url'])
+            if cut_time_start is not None:
+                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), **{'noaccurate_seek': None}, ss=cut_time_start, i=aformat['url'])
+            else:
+                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), i=aformat['url'])
         else:
-            _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers))
+            if cut_time_start is not None:
+                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), **{'noaccurate_seek': None}, ss=cut_time_start)
+            else:
+                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers))
         _fstream = None
         ff.format = None
         if audio_only:
@@ -112,6 +132,11 @@ class FFMpegAV(DumbReader):
                                       vcodec='copy',
                                       acodec='mp3',
                                       movflags='frag_keyframe')
+
+        cut_time_duration_arg = []
+        if cut_time_end is not None:
+            cut_time_duration_arg += ['-t', cut_time_end]
+
         if aformat:
             # args = _fstream.global_args('headers',
             #                             "\n".join(headers),
@@ -122,8 +147,13 @@ class FFMpegAV(DumbReader):
             #                             '-map',
             #                             '1:a').compile()
             args = _fstream.compile()
-            args = args[:3] + ['-headers', "\n".join(headers)] + args[3:-1] + ['-map', '1:v', '-map', '0:a'] + ['-fs', '1520435200'] + [
+            if cut_time_start is not None:
+                args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', "\n".join(headers)] + \
+                       args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + [
                 args[-1]]
+            else:
+                args = args[:5] + ['-headers', "\n".join(headers)] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
+                    '-fs', '1520435200'] + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,
@@ -131,7 +161,7 @@ class FFMpegAV(DumbReader):
             ff.stream = proc
         else:
             args = _fstream.compile()
-            args = args[:-1] + ['-fs', '1520435200'] + [args[-1]]
+            args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,

@@ -16,6 +16,7 @@ import re
 import av_utils
 import av_source
 import users
+import cut_time
 import inspect
 import mimetypes
 from aiogram import Bot
@@ -178,11 +179,22 @@ async def _on_message_task(message):
                 if e.response.status_code == 429:
                     log.critical(e)
                     os.abort()
+            except youtube_dl.DownloadError as e:
+                # crashing to try change ip
+                # otherwise youtube.com will not allow us
+                # to download any video for some time
+                if isinstance(e.exc_info[0], type(HTTPError)):
+                    if e.exc_info[1].file.code == 429:
+                        log.critical(e)
+                        os.abort()
+                else:
+                    log.exception(e)
+                    await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
             except Exception as e:
                 log.exception(e)
                 await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
     except Exception as e:
-        print(e)
+        logging.error(e)
 
 
 # extract telegram command from message
@@ -246,6 +258,8 @@ async def send_settings(user, user_id, edit_id=None):
         await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
 
 
+
+
 async def _on_message(message, log):
     if message['from']['is_bot']:
         log.info('Message from bot, skip')
@@ -268,6 +282,7 @@ async def _on_message(message, log):
 
     user = None
     # check cmd and choose video format
+    cut_time_start = cut_time_end = None
     if cmd is not None:
         if cmd not in available_cmds:
             await bot.send_message(chat_id, 'Wrong command', reply_to=msg_id)
@@ -275,6 +290,8 @@ async def _on_message(message, log):
         elif cmd == 'start':
             await bot.send_message(chat_id, 'Send me a video links')
             return
+        elif cmd == 'c':
+            cut_time_start, cut_time_end = cut_time.parse_time(msg_txt)
         elif cmd == 'ping':
             await bot.send_message(chat_id, 'pong')
             return
@@ -417,6 +434,7 @@ async def _on_message(message, log):
                 else:
                     http_headers = entry['http_headers']
 
+                _cut_time = (cut_time_start, cut_time_end) if cut_time_start else None
                 if formats is not None:
                     for i, f in enumerate(formats):
                         if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
@@ -451,26 +469,30 @@ async def _on_message(message, log):
                                 else:
                                     msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
                             file_size = vsize + msize + 20 * 1024 * 1024
-                            if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE:
+                            if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
                                 ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                             mformat,
-                                                                            headers=dict_to_list(http_headers))
+                                                                            headers=dict_to_list(http_headers),
+                                                                            cut_time_range=_cut_time)
                                 chosen_format = f
                             break
                         # m3u8
-                        if ('m3u8' in f['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                        if ('m3u8' in f['protocol'] and
+                                (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                             chosen_format = f
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True if cmd == 'a' else False,
-                                                                        headers=dict_to_list(http_headers))
+                                                                        headers=dict_to_list(http_headers),
+                                                                        cut_time_range=_cut_time)
                             break
                         # regular video stream
-                        if 0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE:
+                        if (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                             chosen_format = f
                             if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             audio_only=True,
-                                                                            headers=dict_to_list(http_headers))
+                                                                            headers=dict_to_list(http_headers),
+                                                                            cut_time_range=_cut_time)
                             break
 
                 else:
@@ -486,17 +508,20 @@ async def _on_message(message, log):
                             file_size = entry['filesize']
                         else:
                             file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
-                    if ('m3u8' in entry['protocol'] and file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                    if ('m3u8' in entry['protocol'] and
+                            (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                         chosen_format = entry
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                     audio_only=True if cmd == 'a' else False,
-                                                                    headers=dict_to_list(http_headers))
-                    elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE):
+                                                                    headers=dict_to_list(http_headers),
+                                                                    cut_time_range=_cut_time)
+                    elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                         chosen_format = entry
                         if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True,
-                                                                        headers=dict_to_list(http_headers))
+                                                                        headers=dict_to_list(http_headers),
+                                                                        cut_time_range=_cut_time)
 
                 try:
                     if chosen_format is None and ffmpeg_av is None:
@@ -526,17 +551,6 @@ async def _on_message(message, log):
                         file_size += 200000
 
                     log.debug('uploading file')
-                    upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
-                        chosen_format['url'],
-                        http_headers)
-                    file_name = entry['title'] + '.' + \
-                                (chosen_format[
-                                     'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
-                    file_size = file_size if file_size != 0 else 1500*1024*1024
-                    file = await client.upload_file(upload_file,
-                                                    file_name=file_name,
-                                                    file_size=file_size,
-                                                    http_headers=http_headers)
 
                     width = height = duration = None
                     if cmd == 'a':
@@ -560,6 +574,33 @@ async def _on_message(message, log):
                         width, height, duration = chosen_format['width'], chosen_format['height'], \
                                                   int(entry['duration']) if 'duration' not in entry else int(
                                                       entry['duration'])
+
+                    if cut_time_start is not None:
+                        if cut_time.time_to_seconds(cut_time_start) > duration:
+                            raise Exception('Cut start time is bigger than all media duration')
+                        if cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
+                            raise Exception('Cut end time is bigger than all media duration')
+                        if cut_time_end is None:
+                            duration = duration - cut_time.time_to_seconds(cut_time_start)
+                        else:
+                            duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
+
+
+                    if cut_time_start is not None and ffmpeg_av is None:
+                        ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                    headers=dict_to_list(http_headers),
+                                                                    cut_time_range=_cut_time)
+                    upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
+                        chosen_format['url'],
+                        http_headers)
+                    file_name = entry['title'] + '.' + \
+                                (chosen_format[
+                                     'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                    file_size = file_size if file_size != 0 and file_size < 1500*1024*1024 else 1500*1024*1024
+                    file = await client.upload_file(upload_file,
+                                                    file_name=file_name,
+                                                    file_size=file_size,
+                                                    http_headers=http_headers)
 
                     if upload_file is not None:
                         if inspect.iscoroutinefunction(upload_file.close):
@@ -597,7 +638,8 @@ async def _on_message(message, log):
                                            voice_note=voice_note,
                                            attributes=attributes,
                                            caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
-                                           force_document=force_document)
+                                           force_document=force_document,
+                                           supports_streaming=False if ffmpeg_av is not None else True)
                 except Exception as e:
                     print(e)
                     traceback.print_exc()
@@ -630,7 +672,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'settings', 'a', 'w'] + playlist_cmds
+available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500
 

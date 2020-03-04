@@ -387,8 +387,13 @@ async def _on_message(message, log):
                     log.debug('video info received')
                 else:
                     params['format'] = pref_format
-                    vinfo['requested_formats'] = None
-                    vinfo = ydl.process_video_result(vinfo, download=False)
+                    if vinfo['_type'] == 'playlist':
+                        for i, e in enumerate(vinfo['entries']):
+                            e['requested_formats'] = None
+                            vinfo['entries'][i] = ydl.process_video_result(e, download=False)
+                    else:
+                        vinfo['requested_formats'] = None
+                        vinfo = ydl.process_video_result(vinfo, download=False)
                     log.debug('video info reprocessed with new format')
             except Exception as e:
                 if "Please log in or sign up to view this video" in str(e):

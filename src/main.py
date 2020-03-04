@@ -179,6 +179,9 @@ async def _on_message_task(message):
                 if e.code == 429:
                     log.critical(e)
                     os.abort()
+                else:
+                    log.exception(e)
+                    await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
             except youtube_dl.DownloadError as e:
                 # crashing to try change ip
                 # otherwise youtube.com will not allow us
@@ -187,9 +190,9 @@ async def _on_message_task(message):
                     if e.exc_info[1].file.code == 429:
                         log.critical(e)
                         os.abort()
-                else:
-                    log.exception(e)
-                    await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+
+                log.exception(e)
+                await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
             except Exception as e:
                 log.exception(e)
                 await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)

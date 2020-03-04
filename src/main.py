@@ -20,7 +20,7 @@ import cut_time
 import inspect
 import mimetypes
 from aiogram import Bot
-from requests import HTTPError
+from urllib.error import HTTPError
 
 
 def get_client_session():
@@ -176,14 +176,14 @@ async def _on_message_task(message):
                 # crashing to try change ip
                 # otherwise youtube.com will not allow us
                 # to download any video for some time
-                if e.response.status_code == 429:
+                if e.code == 429:
                     log.critical(e)
                     os.abort()
             except youtube_dl.DownloadError as e:
                 # crashing to try change ip
                 # otherwise youtube.com will not allow us
                 # to download any video for some time
-                if isinstance(e.exc_info[0], type(HTTPError)):
+                if e.exc_info[0] is HTTPError:
                     if e.exc_info[1].file.code == 429:
                         log.critical(e)
                         os.abort()
@@ -597,10 +597,18 @@ async def _on_message(message, log):
                                 (chosen_format[
                                      'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
                     file_size = file_size if file_size != 0 and file_size < 1500*1024*1024 else 1500*1024*1024
+
+                    ffmpeg_cancel_task = None
+                    if ffmpeg_av is not None:
+                        ffmpeg_cancel_task = asyncio.get_event_loop().call_later(5400, ffmpeg_av.close)
+
                     file = await client.upload_file(upload_file,
                                                     file_name=file_name,
                                                     file_size=file_size,
                                                     http_headers=http_headers)
+
+                    if ffmpeg_cancel_task is not None and not ffmpeg_cancel_task.cancelled():
+                        ffmpeg_cancel_task.cancel()
 
                     if upload_file is not None:
                         if inspect.iscoroutinefunction(upload_file.close):

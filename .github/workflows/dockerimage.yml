@@ -8,6 +8,10 @@ on:
       - settings
     paths-ignore:
       - '**.md'
+
+  repository_dispatch:
+    types: [production-deploy]
+
 jobs:
 
   build:

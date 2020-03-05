@@ -151,7 +151,7 @@ async def on_message(request):
 
 # share uploaded by client api file to user
 async def share_content_with_user(message, with_reply=True):
-    _user_id, _reply_msg_id, user_caption = message['caption'].split(':')
+    _user_id, _reply_msg_id, user_caption = message['caption'].split(':', maxsplit=2)
     user_id = int(_user_id)
     reply_msg_id = int(_reply_msg_id) if with_reply else None
     caption = user_caption if user_caption != '' else None

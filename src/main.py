@@ -179,7 +179,7 @@ async def _on_message_task(message):
                 # to download any video for some time
                 if e.code == 429:
                     log.critical(e)
-                    os.abort()
+                    await abort()
                 else:
                     log.exception(e)
                     await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
@@ -190,7 +190,7 @@ async def _on_message_task(message):
                 if e.exc_info[0] is HTTPError:
                     if e.exc_info[1].file.code == 429:
                         log.critical(e)
-                        os.abort()
+                        await abort()
 
                 log.exception(e)
                 await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
@@ -697,6 +697,11 @@ TG_MAX_FILE_SIZE = 1500
 async def init_bot_enitty():
     global bot_entity
     bot_entity = await client.get_input_entity(os.environ['CHAT_WITH_BOT_ID'])
+
+
+async def abort():
+    await client.disconnect()
+    os.abort()
 
 
 if __name__ == '__main__':

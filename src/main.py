@@ -21,6 +21,7 @@ import inspect
 import mimetypes
 from aiogram import Bot
 from urllib.error import HTTPError
+import signal
 
 
 def get_client_session():
@@ -705,4 +706,7 @@ if __name__ == '__main__':
     asyncio.get_event_loop().create_task(bot._run_until_disconnected())
     asyncio.get_event_loop().create_task(init_bot_enitty())
     asyncio.get_event_loop().create_task(web.run_app(app))
+    asyncio.get_event_loop().add_signal_handler(signal.SIGKILL, lambda: asyncio.create_task(client.disconnect()))
+    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, lambda: asyncio.create_task(client.disconnect()))
+    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, lambda: asyncio.create_task(client.disconnect()))
     client.run_until_disconnected()

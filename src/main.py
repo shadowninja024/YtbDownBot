@@ -382,7 +382,7 @@ async def _on_message(message, log):
                     log.debug('video info received')
                 else:
                     params['format'] = pref_format
-                    if vinfo['_type'] == 'playlist':
+                    if '_type' in vinfo and vinfo['_type'] == 'playlist':
                         for i, e in enumerate(vinfo['entries']):
                             e['requested_formats'] = None
                             vinfo['entries'][i] = ydl.process_video_result(e, download=False)

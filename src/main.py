@@ -212,15 +212,6 @@ def cmd_from_message(message):
     return cmd
 
 
-# convert each key-value to string like "key: value"
-def dict_to_list(_dict):
-    ret = []
-    for k, v in _dict.items():
-        ret.append(k + ": " + v)
-
-    return ret
-
-
 async def extract_url_info(ydl, url, params):
     # data = {
     #     "url": url,
@@ -442,6 +433,7 @@ async def _on_message(message, log):
                         http_headers = formats[0]['http_headers']
                 else:
                     http_headers = entry['http_headers']
+                http_headers['Referer'] = u
 
                 _cut_time = (cut_time_start, cut_time_end) if cut_time_start else None
                 if formats is not None:
@@ -481,7 +473,7 @@ async def _on_message(message, log):
                             if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
                                 ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                             mformat,
-                                                                            headers=dict_to_list(http_headers),
+                                                                            headers=http_headers,
                                                                             cut_time_range=_cut_time)
                                 chosen_format = f
                             break
@@ -491,7 +483,7 @@ async def _on_message(message, log):
                             chosen_format = f
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True if cmd == 'a' else False,
-                                                                        headers=dict_to_list(http_headers),
+                                                                        headers=http_headers,
                                                                         cut_time_range=_cut_time)
                             break
                         # regular video stream
@@ -500,7 +492,7 @@ async def _on_message(message, log):
                             if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             audio_only=True,
-                                                                            headers=dict_to_list(http_headers),
+                                                                            headers=http_headers,
                                                                             cut_time_range=_cut_time)
                             break
 
@@ -522,14 +514,14 @@ async def _on_message(message, log):
                         chosen_format = entry
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                     audio_only=True if cmd == 'a' else False,
-                                                                    headers=dict_to_list(http_headers),
+                                                                    headers=http_headers,
                                                                     cut_time_range=_cut_time)
                     elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                         chosen_format = entry
                         if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True,
-                                                                        headers=dict_to_list(http_headers),
+                                                                        headers=http_headers,
                                                                         cut_time_range=_cut_time)
 
                 try:
@@ -575,7 +567,7 @@ async def _on_message(message, log):
                             ('width' not in chosen_format) or ('height' not in chosen_format):
                         # info =  await av_utils.av_info(chosen_format['url'],
                         #                                use_m3u8=('m3u8' in chosen_format['protocol']))
-                        info = await av_utils.av_info(chosen_format['url'])
+                        info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
                         width = info['streams'][0]['width']
                         height = info['streams'][0]['height']
                         duration = info['format']['duration']
@@ -597,7 +589,7 @@ async def _on_message(message, log):
 
                     if cut_time_start is not None and ffmpeg_av is None:
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                    headers=dict_to_list(http_headers),
+                                                                    headers=http_headers,
                                                                     cut_time_range=_cut_time)
                     upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
                         chosen_format['url'],

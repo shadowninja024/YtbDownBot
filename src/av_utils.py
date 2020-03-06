@@ -6,6 +6,14 @@ from http.client import responses
 from urllib.parse import urlparse
 
 
+# convert each key-value to string like "key: value"
+def dict_to_list(_dict):
+    ret = []
+    for k, v in _dict.items():
+        ret.append(k + ": " + v)
+
+    return ret
+
 async def av_info(url, http_headers=''):
     # if use_m3u8:
     #     m3u8_obj = await asyncio.get_event_loop().run_in_executor(None, m3u8.load, url)
@@ -20,6 +28,9 @@ async def av_info(url, http_headers=''):
     #     mediainf_args = '--Inform=Audio;%Duration%'
     # else:
     #     mediainf_args = '--Inform=Video;%Width%\\n%Height%\\n%Duration%'
+    if http_headers != '':
+        http_headers = '\n'.join(dict_to_list(http_headers))
+
     ff_proc = await asyncio.create_subprocess_exec('ffprobe',
                                                    '-v',
                                                    'error',
@@ -32,7 +43,7 @@ async def av_info(url, http_headers=''):
                                                    '-of',
                                                    'json',
                                                    '-headers',
-                                                   '\n'.join(http_headers),
+                                                   http_headers,
                                                    url,
                                                    stdout=asyncio.subprocess.PIPE,
                                                    stderr=asyncio.subprocess.STDOUT)
@@ -77,7 +88,7 @@ async def media_size(url, session=None, http_headers=None):
     if content_length == 0:
         async with _session.get(url, headers=http_headers) as resp:
             if resp.status != 200:
-                raise Exception('Request failed: ' + responses[resp.status])
+                raise Exception('Request failed: ' + str(resp.status) + " " + responses[resp.status])
             else:
                 content_length = int(resp.headers['Content-Length'])
 

@@ -3,7 +3,11 @@ import ffmpeg
 import asyncio
 from aiohttp import ClientSession, ClientTimeout
 import cut_time
+import av_utils
 from datetime import datetime
+
+
+
 
 
 class DumbReader(typing.BinaryIO):
@@ -75,6 +79,8 @@ class FFMpegAV(DumbReader):
 
     @staticmethod
     async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None):
+        if headers != '':
+            headers = "\n".join(av_utils.dict_to_list(headers))
         ff = FFMpegAV()
         # _finput = ffmpeg.input(vformat['url'], **{"user-agent": user_agent, "loglevel": "error"})
         _finput = None
@@ -92,14 +98,14 @@ class FFMpegAV(DumbReader):
 
         if aformat:
             if cut_time_start is not None:
-                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), **{'noaccurate_seek': None}, ss=cut_time_start, i=aformat['url'])
+                _finput = ffmpeg.input(vformat['url'], headers=headers, **{'noaccurate_seek': None}, ss=cut_time_start, i=aformat['url'])
             else:
-                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), i=aformat['url'])
+                _finput = ffmpeg.input(vformat['url'], headers=headers, i=aformat['url'])
         else:
             if cut_time_start is not None:
-                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers), **{'noaccurate_seek': None}, ss=cut_time_start)
+                _finput = ffmpeg.input(vformat['url'], headers=headers, **{'noaccurate_seek': None}, ss=cut_time_start)
             else:
-                _finput = ffmpeg.input(vformat['url'], headers="\n".join(headers))
+                _finput = ffmpeg.input(vformat['url'], headers=headers)
         _fstream = None
         ff.format = None
         if audio_only:
@@ -148,11 +154,11 @@ class FFMpegAV(DumbReader):
             #                             '1:a').compile()
             args = _fstream.compile()
             if cut_time_start is not None:
-                args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', "\n".join(headers)] + \
+                args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
                        args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + [
                 args[-1]]
             else:
-                args = args[:5] + ['-headers', "\n".join(headers)] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
+                args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
                     '-fs', '1520435200'] + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],

@@ -1,16 +1,15 @@
 #!/bin/python3
 
 import sys, os
-from telethon import TelegramClient, events, Button, functions, types
+from telethon import TelegramClient, Button, functions
 from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio
-from telethon.sessions import StringSession, SQLiteSession
-from telethon.tl.functions.channels import DeleteMessagesRequest
+from telethon.sessions import StringSession
 import traceback
 import asyncio
 import logging
 import logaugment
 import youtube_dl
-from aiohttp import web, ClientSession
+from aiohttp import web
 from urlextract import URLExtract
 import re
 import av_utils
@@ -22,6 +21,8 @@ import mimetypes
 from aiogram import Bot
 from urllib.error import HTTPError
 import signal
+from importlib import reload
+from pkgutil import walk_packages
 
 
 def get_client_session():
@@ -601,7 +602,7 @@ async def _on_message(message, log):
 
                     ffmpeg_cancel_task = None
                     if ffmpeg_av is not None:
-                        ffmpeg_cancel_task = asyncio.get_event_loop().call_later(5400, ffmpeg_av.close)
+                        ffmpeg_cancel_task = asyncio.get_event_loop().call_later(5400, ffmpeg_av.safe_close)
 
                     file = await client.upload_file(upload_file,
                                                     file_name=file_name,
@@ -696,14 +697,41 @@ async def abort():
     os.abort()
 
 
+def update_youtubedl():
+    logging.debug('SIGHUP')
+    youtubedl_reload()
+    logging.info('youtube-dl updated to version: ' + youtube_dl.version.__version__)
+
+
+def list_submodules(list_name, package_name):
+    for loader, module_name, is_pkg in walk_packages(package_name.__path__):
+        if module_name == '__main__':
+            continue
+        try:
+            sub_mod = getattr(package_name, module_name)
+        except:
+            continue
+        if inspect.isclass(sub_mod):
+            continue
+        list_name.append(sub_mod)
+        if is_pkg:
+            list_submodules(list_name, sub_mod)
+
+
+def youtubedl_reload():
+    sm = []
+    list_submodules(sm, youtube_dl)
+    for m in sm:
+        reload(m)
+
 if __name__ == '__main__':
     app = web.Application()
     app.add_routes([web.post('/bot', on_message)])
     client.start()
     asyncio.get_event_loop().create_task(bot._run_until_disconnected())
     asyncio.get_event_loop().create_task(init_bot_enitty())
+    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, client.disconnect)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, client.disconnect)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGHUP, update_youtubedl)
     asyncio.get_event_loop().create_task(web.run_app(app))
-    asyncio.get_event_loop().add_signal_handler(signal.SIGKILL, lambda: asyncio.create_task(client.disconnect()))
-    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, lambda: asyncio.create_task(client.disconnect()))
-    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, lambda: asyncio.create_task(client.disconnect()))
     client.run_until_disconnected()

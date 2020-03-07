@@ -5,9 +5,7 @@ from aiohttp import ClientSession, ClientTimeout
 import cut_time
 import av_utils
 from datetime import datetime
-
-
-
+import time
 
 
 class DumbReader(typing.BinaryIO):
@@ -198,9 +196,13 @@ class FFMpegAV(DumbReader):
     def close(self) -> None:
         # print('last data ', len(self.stream.stdout.read()))
         try:
-            self.stream.kill()
+            self.stream.terminate()
         except:
             pass
+
+    def safe_close(self):
+        self.close()
+        time.sleep(2)
 
     def __del__(self):
         try:

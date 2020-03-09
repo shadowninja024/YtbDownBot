@@ -9,6 +9,6 @@ new_version=$(pip3 show youtube-dl | grep 'Version' | awk '{ print $2 }')
 if [[ "$prev_version" != "$new_version" ]];
 then
   echo "New youtube-dl version: $new_version"
-  killall -HUP python3;
+  killall -TERM python3;
 fi
 

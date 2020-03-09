@@ -329,8 +329,24 @@ async def _on_message(message, log):
             y_format = worst_video_format
 
     if len(urls) == 0:
+        if playlist_start is not None:
+            if cmd == 'a':
+                await bot.send_message(chat_id, 'Wrong command arguments, Correct example: /pa 2-4 youtube.com', reply_to=msg_id)
+            elif cmd == 'w':
+                await bot.send_message(chat_id, 'Wrong command arguments, Correct example: /pw 2-4 youtube.com',
+                                       reply_to=msg_id)
+            else:
+                await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /p 2-4 youtube.com',
+                                       reply_to=msg_id)
+        elif cmd == 'a':
+            await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
+                                   reply_to=msg_id)
+        elif cmd == 'w':
+            await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
+                                   reply_to=msg_id)
+        else:
+            await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         log.info('Message without url: ' + msg_txt)
-        await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         return
 
     if user is None:
@@ -697,33 +713,6 @@ async def abort():
     os.abort()
 
 
-def update_youtubedl():
-    logging.debug('SIGHUP')
-    youtubedl_reload()
-    logging.info('youtube-dl updated to version: ' + youtube_dl.version.__version__)
-
-
-def list_submodules(list_name, package_name):
-    for loader, module_name, is_pkg in walk_packages(package_name.__path__):
-        if module_name == '__main__':
-            continue
-        try:
-            sub_mod = getattr(package_name, module_name)
-        except:
-            continue
-        if inspect.isclass(sub_mod):
-            continue
-        list_name.append(sub_mod)
-        if is_pkg:
-            list_submodules(list_name, sub_mod)
-
-
-def youtubedl_reload():
-    sm = []
-    list_submodules(sm, youtube_dl)
-    for m in sm:
-        reload(m)
-
 if __name__ == '__main__':
     app = web.Application()
     app.add_routes([web.post('/bot', on_message)])
@@ -732,6 +721,5 @@ if __name__ == '__main__':
     asyncio.get_event_loop().create_task(init_bot_enitty())
     asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, client.disconnect)
     asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, client.disconnect)
-    asyncio.get_event_loop().add_signal_handler(signal.SIGHUP, update_youtubedl)
     asyncio.get_event_loop().create_task(web.run_app(app))
     client.run_until_disconnected()

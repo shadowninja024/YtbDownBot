@@ -650,13 +650,19 @@ async def _on_message(message, log):
                                                  (cmd == 'a'))
                                                  and user.audio_caption) else ''
                     recover_playlist_index = None
-                    await client.send_file(bot_entity, file,
-                                           video_note=video_note,
-                                           voice_note=voice_note,
-                                           attributes=attributes,
-                                           caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
-                                           force_document=force_document,
-                                           supports_streaming=False if ffmpeg_av is not None else True)
+                    for i in range(10):
+                        try:
+                            await client.send_file(bot_entity, file,
+                                                   video_note=video_note,
+                                                   voice_note=voice_note,
+                                                   attributes=attributes,
+                                                   caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
+                                                   force_document=force_document,
+                                                   supports_streaming=False if ffmpeg_av is not None else True)
+                        except:
+                            asyncio.sleep(1)
+                        finally:
+                            break
                 except Exception as e:
                     print(e)
                     traceback.print_exc()

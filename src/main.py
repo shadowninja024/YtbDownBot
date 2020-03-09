@@ -298,7 +298,7 @@ async def _on_message(message, log):
         elif cmd in playlist_cmds:
             urls_count = len(urls)
             if urls_count != 1:
-                await bot.send_message(chat_id, 'Please send one playlist url', reply_to=msg_id)
+                await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
@@ -329,16 +329,7 @@ async def _on_message(message, log):
             y_format = worst_video_format
 
     if len(urls) == 0:
-        if playlist_start is not None:
-            if cmd == 'a':
-                await bot.send_message(chat_id, 'Wrong command arguments, Correct example: /pa 2-4 youtube.com', reply_to=msg_id)
-            elif cmd == 'w':
-                await bot.send_message(chat_id, 'Wrong command arguments, Correct example: /pw 2-4 youtube.com',
-                                       reply_to=msg_id)
-            else:
-                await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /p 2-4 youtube.com',
-                                       reply_to=msg_id)
-        elif cmd == 'a':
+        if cmd == 'a':
             await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
                                    reply_to=msg_id)
         elif cmd == 'w':

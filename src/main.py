@@ -19,10 +19,9 @@ import cut_time
 import inspect
 import mimetypes
 from aiogram import Bot
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
 import signal
-from importlib import reload
-from pkgutil import walk_packages
 
 
 def get_client_session():
@@ -119,7 +118,8 @@ async def _on_callback(from_id, msg_id, data, user, log):
     elif key == '':
         global bot_entity
         log.info('delete settings menu')
-        await bot.delete_messages(bot_entity, msg_id)
+        await _bot.delete_message(from_id, msg_id)
+        # await bot.delete_messages(bot_entity, msg_id)
         return
 
     await send_settings(user, from_id, msg_id)
@@ -168,36 +168,39 @@ async def share_content_with_user(message, with_reply=True):
 
 async def _on_message_task(message):
     try:
-        async with bot.action(message['chat']['id'], 'file'):
-            chat_id = message['from']['id']
-            msg_id = message['message_id']
-            log = new_logger(chat_id, msg_id)
-            try:
-                await _on_message(message, log)
-            except HTTPError as e:
-                # crashing to try change ip
-                # otherwise youtube.com will not allow us
-                # to download any video for some time
-                if e.code == 429:
+        # async with bot.action(message['chat']['id'], 'file'):
+        chat_id = message['from']['id']
+        msg_id = message['message_id']
+        log = new_logger(chat_id, msg_id)
+        try:
+            await _on_message(message, log)
+        except HTTPError as e:
+            # crashing to try change ip
+            # otherwise youtube.com will not allow us
+            # to download any video for some time
+            if e.code == 429:
+                log.critical(e)
+                await abort()
+            else:
+                log.exception(e)
+                await _bot.send_message(chat_id, e.__str__(), reply_to_message_id=msg_id)
+                # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+        except youtube_dl.DownloadError as e:
+            # crashing to try change ip
+            # otherwise youtube.com will not allow us
+            # to download any video for some time
+            if e.exc_info[0] is HTTPError:
+                if e.exc_info[1].file.code == 429:
                     log.critical(e)
                     await abort()
-                else:
-                    log.exception(e)
-                    await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
-            except youtube_dl.DownloadError as e:
-                # crashing to try change ip
-                # otherwise youtube.com will not allow us
-                # to download any video for some time
-                if e.exc_info[0] is HTTPError:
-                    if e.exc_info[1].file.code == 429:
-                        log.critical(e)
-                        await abort()
 
-                log.exception(e)
-                await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
-            except Exception as e:
-                log.exception(e)
-                await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+            log.exception(e)
+            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+        except Exception as e:
+            log.exception(e)
+            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
     except Exception as e:
         logging.error(e)
 
@@ -229,29 +232,38 @@ async def extract_url_info(ydl, url, params):
 
 async def send_settings(user, user_id, edit_id=None):
     buttons = None
+    keyboard = InlineKeyboardMarkup(row_width=2)
     if user.default_media_type == users.DefaultMediaType.Video.value:
-        buttons = [
-            [Button.inline('🎬⤵️',
-                           data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
-             Button.inline(str(user.video_format) + 'p',
-                           data='video_format:' + str(user.video_format))],
-            [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
-                           data='video_caption:' + str(user.video_caption)),
-             Button.inline('❌', data=':')]
-        ]
+        b1 = InlineKeyboardButton('🎬⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Video.value))
+        b2 = InlineKeyboardButton(str(user.video_format) + 'p', callback_data='video_format:' + str(user.video_format))
+        b3 = InlineKeyboardButton('Video caption: ' + ('✅' if user.video_caption else '❎'), callback_data='video_caption:' + str(user.video_caption))
+        b4 = InlineKeyboardButton('❌', callback_data=':')
+        keyboard.add(b1, b2, b3, b4)
+            # [Button.inline('🎬⤵️',
+            #                data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
+            #  Button.inline(str(user.video_format) + 'p',
+            #                data='video_format:' + str(user.video_format))],
+            # [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
+            #                data='video_caption:' + str(user.video_caption)),
+            #  Button.inline('❌', data=':')]
     else:
-        buttons = [
-            [Button.inline('🎧⤵️',
-                           data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
-             Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
-                           data='audio_caption:' + str(user.audio_caption))],
-            [Button.inline('❌', data=':')]
-        ]
+        b1 = InlineKeyboardButton('🎧⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Audio.value))
+        b2 = InlineKeyboardButton('Audio caption: ' + ('✅' if user.audio_caption else '❎'), callback_data='audio_caption:' + str(user.audio_caption))
+        b3 = InlineKeyboardButton('❌', callback_data=':')
+        keyboard.add(b1, b2, b3)
+            # [Button.inline('🎧⤵️',
+            #                data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
+            #  Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+            #                data='audio_caption:' + str(user.audio_caption))],
+            # [Button.inline('❌', data=':')]
     if edit_id is None:
-        await bot.send_message(user_id, '⚙SETTINGS', buttons=buttons)
+
+        await _bot.send_message(user_id, '⚙SETTINGS', reply_markup=keyboard)
+        # await bot.send_message(user_id, '⚙SETTINGS', buttons=buttons)
     else:
-        msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
-        await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
+        await _bot.edit_message_reply_markup(user_id, edit_id, reply_markup=keyboard)
+        # msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
+        # await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
 
 
 
@@ -264,7 +276,8 @@ async def _on_message(message, log):
     msg_id = message['message_id']
     chat_id = message['chat']['id']
     if 'text' not in message:
-        await bot.send_message(chat_id, 'Please send me a video link', reply_to=msg_id)
+        await _bot.send_message(chat_id, 'Please send me a video link', reply_to_message_id=msg_id)
+        # await bot.send_message(chat_id, 'Please send me a video link', reply_to=msg_id)
         return
     msg_txt = message['text']
 
@@ -281,15 +294,18 @@ async def _on_message(message, log):
     cut_time_start = cut_time_end = None
     if cmd is not None:
         if cmd not in available_cmds:
-            await bot.send_message(chat_id, 'Wrong command', reply_to=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command', reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, 'Wrong command', reply_to=msg_id)
             return
         elif cmd == 'start':
-            await bot.send_message(chat_id, 'Send me a video links')
+            await _bot.send_message(chat_id, 'Send me a video links')
+            # await bot.send_message(chat_id, 'Send me a video links')
             return
         elif cmd == 'c':
             cut_time_start, cut_time_end = cut_time.parse_time(msg_txt)
         elif cmd == 'ping':
-            await bot.send_message(chat_id, 'pong')
+            await _bot.send_message(chat_id, 'pong')
+            # await bot.send_message(chat_id, 'pong')
             return
         elif cmd == 'settings':
             user = await users.User.init(chat_id)
@@ -298,26 +314,30 @@ async def _on_message(message, log):
         elif cmd in playlist_cmds:
             urls_count = len(urls)
             if urls_count != 1:
-                await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
+                await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to_message_id=msg_id)
+                # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
-                await bot.send_message(chat_id,
-                                       'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
-                                       reply_to=msg_id)
+                await _bot.send_message(chat_id, 'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0], reply_to_message_id=msg_id)
+                # await bot.send_message(chat_id,
+                #                        'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
+                #                        reply_to=msg_id)
                 return
             _start, _end = range_match.groups()
             playlist_start = int(_start)
             playlist_end = int(_end)
             if playlist_start >= playlist_end:
-                await bot.send_message(chat_id,
-                                       'Not correct format, start number must be less then end',
-                                       reply_to=msg_id)
+                await _bot.send_message(chat_id, 'Not correct format, start number must be less then end', reply_to_message_id=msg_id)
+                # await bot.send_message(chat_id,
+                #                        'Not correct format, start number must be less then end',
+                #                        reply_to=msg_id)
                 return
             elif playlist_end - playlist_start > 50:
-                await bot.send_message(chat_id,
-                                       'Too big range. Allowed range is less or equal 50 videos',
-                                       reply_to=msg_id)
+                await _bot.send_message(chat_id, 'Too big range. Allowed range is less or equal 50 videos', reply_to_message_id=msg_id)
+                # await bot.send_message(chat_id,
+                #                        'Too big range. Allowed range is less or equal 50 videos',
+                #                        reply_to=msg_id)
                 return
             # cut "p" from cmd variable if cmd == "pa" or "pw"
             cmd = cmd if len(cmd) == 1 else cmd[-1]
@@ -330,13 +350,16 @@ async def _on_message(message, log):
 
     if len(urls) == 0:
         if cmd == 'a':
-            await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
-                                   reply_to=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com', reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
+            #                        reply_to=msg_id)
         elif cmd == 'w':
-            await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
-                                   reply_to=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com', reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
+            #                        reply_to=msg_id)
         else:
-            await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
+            await _bot.send_message(chat_id, 'Please send me link to the video', reply_to_message_id=msg_id)
+            # await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         log.info('Message without url: ' + msg_txt)
         return
 
@@ -407,11 +430,13 @@ async def _on_message(message, log):
                             vinfo = await extract_url_info(u, params)
                         except Exception as e:
                             log.error(e)
-                            await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+                            # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     else:
                         log.error(e)
-                        await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                        await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+                        # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                         continue
                 elif 'are video-only' in str(e):
                     params['format'] = 'bestvideo[ext=mp4]'
@@ -419,7 +444,8 @@ async def _on_message(message, log):
                         vinfo = await extract_url_info(u, params)
                     except Exception as e:
                         log.error(e)
-                        await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                        await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+                        # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                         continue
                 else:
                     raise
@@ -535,7 +561,8 @@ async def _on_message(message, log):
                 try:
                     if chosen_format is None and ffmpeg_av is None:
                         if len(preferred_formats) - 1 == ip:
-                            await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                            await _bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to_message_id=msg_id)
+                            # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                             return
                         # if 'playlist' in entry and entry['playlist'] is not None:
                         recover_playlist_index = ie
@@ -544,7 +571,10 @@ async def _on_message(message, log):
                         mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
                         ext = mimetypes.guess_extension(mime)
                         if ext is None or ext == '':
-                            await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                            if len(preferred_formats) - 1 == ip:
+                                await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                                        reply_to_message_id=msg_id)
+                            # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                             continue
                         else:
                             ext = ext[1:]
@@ -659,8 +689,9 @@ async def _on_message(message, log):
                                                    caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
                                                    force_document=force_document,
                                                    supports_streaming=False if ffmpeg_av is not None else True)
-                        except:
-                            asyncio.sleep(1)
+                        except Exception as e:
+                            log.error(e)
+                            await asyncio.sleep(1)
                         finally:
                             break
                 except Exception as e:
@@ -680,7 +711,7 @@ BOT_AGENT_CHAT_ID = int(os.environ['BOT_AGENT_CHAT_ID'])
 # YTDL_LAMBDA_SECRET = os.environ['YTDL_LAMBDA_SECRET']
 
 client = TelegramClient(StringSession(get_client_session()), api_id, api_hash)
-bot = TelegramClient('bot', api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
+# bot = TelegramClient('bot', api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
 _bot = Bot(token=os.environ['BOT_TOKEN'])
 bot_entity = None
 
@@ -714,7 +745,7 @@ if __name__ == '__main__':
     app = web.Application()
     app.add_routes([web.post('/bot', on_message)])
     client.start()
-    asyncio.get_event_loop().create_task(bot._run_until_disconnected())
+    # asyncio.get_event_loop().create_task(bot._run_until_disconnected())
     asyncio.get_event_loop().create_task(init_bot_enitty())
     asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, client.disconnect)
     asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, client.disconnect)

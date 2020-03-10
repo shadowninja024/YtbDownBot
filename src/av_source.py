@@ -167,7 +167,7 @@ class FFMpegAV(DumbReader):
         else:
             args = _fstream.compile()
             args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
-            if cut_time_start is not None:
+            if cut_time_start is not None and not audio_only:
                 args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
         proc = await asyncio.create_subprocess_exec('ffmpeg',

@@ -391,7 +391,7 @@ async def _on_message(message, log):
         else:
             preferred_formats = [audio_format]
 
-    await _bot.send_chat_action(chat_id, "file")
+    await _bot.send_chat_action(chat_id, "upload_document")
 
     for u in urls:
         vinfo = None

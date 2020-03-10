@@ -144,6 +144,7 @@ class FFMpegAV(DumbReader):
         if cut_time_end is not None:
             cut_time_duration_arg += ['-t', cut_time_end]
 
+        args = []
         if aformat:
             # args = _fstream.global_args('headers',
             #                             "\n".join(headers),
@@ -158,23 +159,21 @@ class FFMpegAV(DumbReader):
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
                        args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + \
                        cut_time_fix_args + [args[-1]]
-                args[args.index('acodec')+1] = 'copy'  # copy audio if cutting due to music issue
             else:
                 args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
                     '-fs', '1520435200'] + [args[-1]]
-            proc = await asyncio.create_subprocess_exec('ffmpeg',
-                                                        *args[1:],
-                                                        stdout=asyncio.subprocess.PIPE,
-                                                        stderr=asyncio.subprocess.PIPE)
-            ff.stream = proc
+
         else:
             args = _fstream.compile()
             args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
-            proc = await asyncio.create_subprocess_exec('ffmpeg',
-                                                        *args[1:],
-                                                        stdout=asyncio.subprocess.PIPE,
-                                                        stderr=asyncio.subprocess.PIPE)
-            ff.stream = proc
+            if cut_time_start is not None:
+                args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
+
+        proc = await asyncio.create_subprocess_exec('ffmpeg',
+                                                    *args[1:],
+                                                    stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.PIPE)
+        ff.stream = proc
 
         return ff
 

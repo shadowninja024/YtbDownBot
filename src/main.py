@@ -236,26 +236,28 @@ async def send_settings(user, user_id, edit_id=None):
     if user.default_media_type == users.DefaultMediaType.Video.value:
         b1 = InlineKeyboardButton('🎬⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Video.value))
         b2 = InlineKeyboardButton(str(user.video_format) + 'p', callback_data='video_format:' + str(user.video_format))
-        b3 = InlineKeyboardButton('Video caption: ' + ('✅' if user.video_caption else '❎'), callback_data='video_caption:' + str(user.video_caption))
+        b3 = InlineKeyboardButton('Video caption: ' + ('✅' if user.video_caption else '❎'),
+                                  callback_data='video_caption:' + str(user.video_caption))
         b4 = InlineKeyboardButton('❌', callback_data=':')
         keyboard.add(b1, b2, b3, b4)
-            # [Button.inline('🎬⤵️',
-            #                data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
-            #  Button.inline(str(user.video_format) + 'p',
-            #                data='video_format:' + str(user.video_format))],
-            # [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
-            #                data='video_caption:' + str(user.video_caption)),
-            #  Button.inline('❌', data=':')]
+        # [Button.inline('🎬⤵️',
+        #                data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
+        #  Button.inline(str(user.video_format) + 'p',
+        #                data='video_format:' + str(user.video_format))],
+        # [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
+        #                data='video_caption:' + str(user.video_caption)),
+        #  Button.inline('❌', data=':')]
     else:
         b1 = InlineKeyboardButton('🎧⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Audio.value))
-        b2 = InlineKeyboardButton('Audio caption: ' + ('✅' if user.audio_caption else '❎'), callback_data='audio_caption:' + str(user.audio_caption))
+        b2 = InlineKeyboardButton('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+                                  callback_data='audio_caption:' + str(user.audio_caption))
         b3 = InlineKeyboardButton('❌', callback_data=':')
         keyboard.add(b1, b2, b3)
-            # [Button.inline('🎧⤵️',
-            #                data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
-            #  Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
-            #                data='audio_caption:' + str(user.audio_caption))],
-            # [Button.inline('❌', data=':')]
+        # [Button.inline('🎧⤵️',
+        #                data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
+        #  Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+        #                data='audio_caption:' + str(user.audio_caption))],
+        # [Button.inline('❌', data=':')]
     if edit_id is None:
 
         await _bot.send_message(user_id, '⚙SETTINGS', reply_markup=keyboard)
@@ -264,8 +266,6 @@ async def send_settings(user, user_id, edit_id=None):
         await _bot.edit_message_reply_markup(user_id, edit_id, reply_markup=keyboard)
         # msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
         # await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
-
-
 
 
 async def _on_message(message, log):
@@ -314,12 +314,15 @@ async def _on_message(message, log):
         elif cmd in playlist_cmds:
             urls_count = len(urls)
             if urls_count != 1:
-                await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to_message_id=msg_id)
+                await _bot.send_message(chat_id,
+                                        'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com",
+                                        reply_to_message_id=msg_id)
                 # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
-                await _bot.send_message(chat_id, 'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0], reply_to_message_id=msg_id)
+                await _bot.send_message(chat_id, 'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
+                                        reply_to_message_id=msg_id)
                 # await bot.send_message(chat_id,
                 #                        'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
                 #                        reply_to=msg_id)
@@ -328,13 +331,15 @@ async def _on_message(message, log):
             playlist_start = int(_start)
             playlist_end = int(_end)
             if playlist_start >= playlist_end:
-                await _bot.send_message(chat_id, 'Not correct format, start number must be less then end', reply_to_message_id=msg_id)
+                await _bot.send_message(chat_id, 'Not correct format, start number must be less then end',
+                                        reply_to_message_id=msg_id)
                 # await bot.send_message(chat_id,
                 #                        'Not correct format, start number must be less then end',
                 #                        reply_to=msg_id)
                 return
             elif playlist_end - playlist_start > 50:
-                await _bot.send_message(chat_id, 'Too big range. Allowed range is less or equal 50 videos', reply_to_message_id=msg_id)
+                await _bot.send_message(chat_id, 'Too big range. Allowed range is less or equal 50 videos',
+                                        reply_to_message_id=msg_id)
                 # await bot.send_message(chat_id,
                 #                        'Too big range. Allowed range is less or equal 50 videos',
                 #                        reply_to=msg_id)
@@ -350,11 +355,13 @@ async def _on_message(message, log):
 
     if len(urls) == 0:
         if cmd == 'a':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com', reply_to_message_id=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
+                                    reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
             #                        reply_to=msg_id)
         elif cmd == 'w':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com', reply_to_message_id=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
+                                    reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
             #                        reply_to=msg_id)
         else:
@@ -561,7 +568,8 @@ async def _on_message(message, log):
                 try:
                     if chosen_format is None and ffmpeg_av is None:
                         if len(preferred_formats) - 1 == ip:
-                            await _bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to_message_id=msg_id)
+                            await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                                    reply_to_message_id=msg_id)
                             # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                             return
                         # if 'playlist' in entry and entry['playlist'] is not None:
@@ -624,7 +632,6 @@ async def _on_message(message, log):
                         else:
                             duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
 
-
                     if cut_time_start is not None and ffmpeg_av is None:
                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                     headers=http_headers,
@@ -635,7 +642,7 @@ async def _on_message(message, log):
                     file_name = entry['title'] + '.' + \
                                 (chosen_format[
                                      'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
-                    file_size = file_size if file_size != 0 and file_size < 1500*1024*1024 else 1500*1024*1024
+                    file_size = file_size if file_size != 0 and file_size < 1500 * 1024 * 1024 else 1500 * 1024 * 1024
 
                     ffmpeg_cancel_task = None
                     if ffmpeg_av is not None:
@@ -677,7 +684,7 @@ async def _on_message(message, log):
                     caption = entry['title'] if (user.default_media_type == users.DefaultMediaType.Video.value
                                                  and user.video_caption) or \
                                                 (((user.default_media_type == users.DefaultMediaType.Audio.value) or
-                                                 (cmd == 'a'))
+                                                  (cmd == 'a'))
                                                  and user.audio_caption) else ''
                     recover_playlist_index = None
                     for i in range(10):

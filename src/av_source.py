@@ -99,7 +99,8 @@ class FFMpegAV(DumbReader):
 
         if aformat:
             if cut_time_start is not None:
-                _finput = ffmpeg.input(vformat['url'], headers=headers, **{'noaccurate_seek': None}, ss=cut_time_start, i=aformat['url'])
+                _finput = ffmpeg.input(vformat['url'], headers=headers, **{'noaccurate_seek': None}, ss=cut_time_start,
+                                       i=aformat['url'])
             else:
                 _finput = ffmpeg.input(vformat['url'], headers=headers, i=aformat['url'])
         else:
@@ -212,6 +213,7 @@ class FFMpegAV(DumbReader):
             self.stream.kill()
         except:
             pass
+
 
 class URLav(DumbReader):
     def __init__(self):

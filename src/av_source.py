@@ -6,6 +6,7 @@ import cut_time
 import av_utils
 from datetime import datetime
 import time
+import signal
 
 
 class DumbReader(typing.BinaryIO):
@@ -83,8 +84,10 @@ class FFMpegAV(DumbReader):
         # _finput = ffmpeg.input(vformat['url'], **{"user-agent": user_agent, "loglevel": "error"})
         _finput = None
 
+        cut_time_fix_args = []
         cut_time_start = cut_time_end = None
         if cut_time_range is not None:
+            cut_time_fix_args = ['-avoid_negative_ts', 'make_zero']
             cut_time_start, cut_time_end = cut_time_range
             if cut_time_end is not None:
 
@@ -153,8 +156,9 @@ class FFMpegAV(DumbReader):
             args = _fstream.compile()
             if cut_time_start is not None:
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
-                       args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + [
-                args[-1]]
+                       args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + \
+                       cut_time_fix_args + [args[-1]]
+                args[args.index('acodec')+1] = 'copy'  # copy audio if cutting due to music issue
             else:
                 args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
                     '-fs', '1520435200'] + [args[-1]]
@@ -165,7 +169,7 @@ class FFMpegAV(DumbReader):
             ff.stream = proc
         else:
             args = _fstream.compile()
-            args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + [args[-1]]
+            args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],
                                                         stdout=asyncio.subprocess.PIPE,
@@ -196,9 +200,13 @@ class FFMpegAV(DumbReader):
     def close(self) -> None:
         # print('last data ', len(self.stream.stdout.read()))
         try:
-            self.stream.kill()
+            self.stream.send_signal(signal.SIGQUIT)
         except:
             pass
+
+    def safe_close(self):
+        self.close()
+        time.sleep(2)
 
     def __del__(self):
         try:

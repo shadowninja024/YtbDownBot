@@ -609,7 +609,7 @@ async def _on_message(message, log):
 
                     ffmpeg_cancel_task = None
                     if ffmpeg_av is not None:
-                        ffmpeg_cancel_task = asyncio.get_event_loop().call_later(3600, ffmpeg_av.close)
+                        ffmpeg_cancel_task = asyncio.get_event_loop().call_later(3600, ffmpeg_av.safe_close)
 
                     file = await client.upload_file(upload_file,
                                                     file_name=file_name,

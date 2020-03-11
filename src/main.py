@@ -512,7 +512,8 @@ async def _on_message(message, log):
                                     msize = mformat['filesize']
                                 else:
                                     msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                            file_size = vsize + msize + 20 * 1024 * 1024
+                            # we can't precisely predict media size so make it large for prevent cutting
+                            file_size = vsize + msize + 10 * 1024 * 1024
                             if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
                                 ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                             mformat,
@@ -624,7 +625,8 @@ async def _on_message(message, log):
                                                   int(entry['duration']) if 'duration' not in entry else int(
                                                       entry['duration'])
 
-                    if cut_time_start is not None:
+                    # in case of video is live we don't know real duration
+                    if cut_time_start is not None and not entry.get('is_live'):
                         if cut_time.time_to_seconds(cut_time_start) > duration:
                             raise Exception('Cut start time is bigger than all media duration')
                         if cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
@@ -704,8 +706,10 @@ async def _on_message(message, log):
                         finally:
                             break
                 except Exception as e:
-                    print(e)
-                    traceback.print_exc()
+                    log.exception(e)
+                    if len(entries) - 1 == ie:
+                        # raise exception for notify user about error
+                        raise
 
             if recover_playlist_index is None:
                 break

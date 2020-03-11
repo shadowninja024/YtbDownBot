@@ -200,7 +200,7 @@ class FFMpegAV(DumbReader):
     def close(self) -> None:
         # print('last data ', len(self.stream.stdout.read()))
         try:
-            self.stream.send_signal(signal.SIGQUIT)
+            self.stream.terminate()
         except:
             pass
 

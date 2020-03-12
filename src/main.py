@@ -271,6 +271,9 @@ async def send_settings(user, user_id, edit_id=None):
         # msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
         # await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
 
+is_ytb_link_re = re.compile('^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$')
+get_ytb_id_re = re.compile('.*(youtu.be\/|v\/|embed\/|watch\?|youtube.com\/user\/[^#]*#([^\/]*?\/)*)\??v?=?([^#\&\?]*).*')
+
 
 async def _on_message(message, log):
     if message['from']['is_bot']:
@@ -423,7 +426,27 @@ async def _on_message(message, log):
                         params['playliststart'] += recover_playlist_index
                     ydl.params = params
                     if vinfo is None:
-                        vinfo = await extract_url_info(ydl, u, params)
+                        for _ in range(2):
+                            try:
+                                vinfo = await extract_url_info(ydl, u, params)
+                            except youtube_dl.DownloadError as e:
+                                # try to use invidio.us youtube frontend to bypass 429 block
+                                if e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429:
+                                    if is_ytb_link_re.search(u):
+                                        ytb_id_match = get_ytb_id_re.search(u)
+                                        if ytb_id_match:
+                                            ytb_id = ytb_id_match.groups()[-1]
+                                            u = "https://invidio.us/watch?v=" + ytb_id
+                                            if cmd == 'a':
+                                                u += '&listen=1'
+                                            ydl.params['force_generic_extractor'] = True
+                                            continue
+                                    raise
+                                else:
+                                    raise
+                            finally:
+                                break
+
                         log.debug('video info received')
                     else:
                         params['format'] = pref_format

@@ -6,6 +6,7 @@ import cut_time
 import av_utils
 from datetime import datetime
 import time
+import os
 import signal
 
 
@@ -77,7 +78,7 @@ class FFMpegAV(DumbReader):
         self._buf = b''
 
     @staticmethod
-    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None):
+    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None, ext=None):
         if headers != '':
             headers = "\n".join(av_utils.dict_to_list(headers))
         ff = FFMpegAV()
@@ -135,8 +136,9 @@ class FFMpegAV(DumbReader):
                                           acodec='mp3',
                                           **{'vn': None})
         else:
+            _format = ext if ext else 'mp4'
             _fstream = _finput.output('pipe:',
-                                      format='mp4',
+                                      format=_format,
                                       vcodec='copy',
                                       acodec='mp3',
                                       movflags='frag_keyframe')
@@ -200,17 +202,19 @@ class FFMpegAV(DumbReader):
     def close(self) -> None:
         # print('last data ', len(self.stream.stdout.read()))
         try:
-            self.stream.terminate()
+            os.kill(self.stream.pid, signal.SIGTERM)
         except:
             pass
 
     def safe_close(self):
         self.close()
         time.sleep(2)
+        # sometimes ffmpeg don't want to exit after any signal except SIGKILL
+        os.kill(self.stream.pid, signal.SIGKILL)
 
     def __del__(self):
         try:
-            self.stream.kill()
+            os.kill(self.stream.pid, signal.SIGKILL)
         except:
             pass
 

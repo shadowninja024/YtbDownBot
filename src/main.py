@@ -19,6 +19,7 @@ import cut_time
 import tgaction
 import inspect
 import mimetypes
+from datetime import time
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
@@ -559,6 +560,8 @@ async def _on_message(message, log):
                         if ('m3u8' in entry['protocol'] and
                                 (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                             chosen_format = entry
+                            if entry.get('is_live') and not _cut_time:
+                                _cut_time = (time(hour=0, minute=0, second=0), time(hour=0, minute=2, second=0))
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         audio_only=True if cmd == 'a' else False,
                                                                         headers=http_headers,
@@ -642,7 +645,8 @@ async def _on_message(message, log):
                         if cut_time_start is not None and ffmpeg_av is None:
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,
-                                                                        cut_time_range=_cut_time)
+                                                                        cut_time_range=_cut_time,
+                                                                        ext=chosen_format.get('ext'))
                         upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
                             chosen_format['url'],
                             http_headers)
@@ -653,7 +657,7 @@ async def _on_message(message, log):
 
                         ffmpeg_cancel_task = None
                         if ffmpeg_av is not None:
-                            ffmpeg_cancel_task = asyncio.get_event_loop().call_later(3600, ffmpeg_av.safe_close)
+                            ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
 
                         file = await client.upload_file(upload_file,
                                                         file_name=file_name,

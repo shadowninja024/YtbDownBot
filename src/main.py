@@ -144,12 +144,14 @@ async def on_message(request):
                 if 'Reply message not found' in str(e):
                     await share_content_with_user(message, with_reply=False)
                 else:
-                    logging.exception(e)
+                    print(e)
+                    traceback.print_exc()
             return web.Response(status=200)
 
         asyncio.get_event_loop().create_task(_on_message_task(message))
     except Exception as e:
-        logging.exception(e)
+        print(e)
+        traceback.print_exc()
 
     return web.Response(status=200)
 
@@ -752,8 +754,11 @@ TG_MAX_FILE_SIZE = 1500
 
 
 async def init_bot_enitty():
-    global bot_entity
-    bot_entity = await client.get_input_entity(os.environ['CHAT_WITH_BOT_ID'])
+    try:
+        global bot_entity
+        bot_entity = await client.get_input_entity(os.environ['CHAT_WITH_BOT_ID'])
+    except Exception as e:
+        print(e)
 
 
 async def abort():

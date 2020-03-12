@@ -24,7 +24,6 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
 import signal
-import functools
 
 
 def get_client_session():
@@ -772,8 +771,7 @@ if __name__ == '__main__':
     client.start()
     # asyncio.get_event_loop().create_task(bot._run_until_disconnected())
     asyncio.get_event_loop().create_task(init_bot_enitty())
-    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, functools.partial(asyncio.ensure_future, client.disconnect()))
-    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, functools.partial(asyncio.ensure_future, client.disconnect()))
-    asyncio.get_event_loop().add_signal_handler(signal.SIGQUIT, functools.partial(asyncio.ensure_future, client.disconnect()))
+    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, client.disconnect)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, client.disconnect)
     asyncio.get_event_loop().create_task(web.run_app(app))
     client.run_until_disconnected()

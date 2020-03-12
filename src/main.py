@@ -444,8 +444,7 @@ async def _on_message(message, log):
                                     raise
                                 else:
                                     raise
-                            finally:
-                                break
+                            break
 
                         log.debug('video info received')
                     else:

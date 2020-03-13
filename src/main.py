@@ -401,7 +401,7 @@ async def _on_message(message, log):
     # await _bot.send_chat_action(chat_id, "upload_document")
 
     async with tgaction.TGAction(_bot, chat_id, "upload_document"):
-        for u in urls:
+        for u in set(urls):
             vinfo = None
             params = {'noplaylist': True,
                       'youtube_include_dash_manifest': False,

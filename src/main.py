@@ -466,8 +466,9 @@ async def _on_message(message, log):
                 except Exception as e:
                     if "Please log in or sign up to view this video" in str(e):
                         if 'vk.com' in u:
-                            ydl.params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
-                            ydl.params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
+                            params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
+                            params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
+                            ydl = youtube_dl.YoutubeDL(params=params)
                             try:
                                 vinfo = await extract_url_info(ydl, u)
                             except Exception as e:
@@ -481,7 +482,8 @@ async def _on_message(message, log):
                             # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     elif 'are video-only' in str(e):
-                        ydl.params['format'] = 'bestvideo[ext=mp4]'
+                        params['format'] = 'bestvideo[ext=mp4]'
+                        ydl = youtube_dl.YoutubeDL(params=params)
                         try:
                             vinfo = await extract_url_info(ydl, u)
                         except Exception as e:

@@ -24,6 +24,7 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
 import signal
+import functools
 
 
 def get_client_session():
@@ -232,10 +233,11 @@ async def extract_url_info(ydl, url):
     #     async with session.post(YTDL_LAMBDA_URL, json=data, headers=headers, timeout=14400) as req:
     #         return await req.json()
     return await asyncio.get_event_loop().run_in_executor(None,
-                                                          ydl.extract_info,
-                                                          url,
-                                                          download=False,
-                                                          force_generic_extractor=ydl.params.get('force_generic_extractor', False))
+                                                          functools.partial(ydl.extract_info,
+                                                                            download=False,
+                                                                            force_generic_extractor=ydl.params.get(
+                                                                                'force_generic_extractor', False)),
+                                                          url)
 
 
 async def send_settings(user, user_id, edit_id=None):

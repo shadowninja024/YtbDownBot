@@ -428,7 +428,10 @@ async def _on_message(message, log):
                     if vinfo is None:
                         for _ in range(2):
                             try:
-                                vinfo = await extract_url_info(ydl, u, params)
+                                vinfo = await extract_url_info(ydl,
+                                                               u,
+                                                               params,
+                                                               force_generic_extractor=ydl.params.get('force_generic_extractor', False))
                             except youtube_dl.DownloadError as e:
                                 # try to use invidio.us youtube frontend to bypass 429 block
                                 if e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429:

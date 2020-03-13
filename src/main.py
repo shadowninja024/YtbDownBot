@@ -220,7 +220,7 @@ def cmd_from_message(message):
     return cmd
 
 
-async def extract_url_info(ydl, url, params):
+async def extract_url_info(ydl, url):
     # data = {
     #     "url": url,
     #     **params
@@ -231,7 +231,11 @@ async def extract_url_info(ydl, url, params):
     # async with ClientSession() as session:
     #     async with session.post(YTDL_LAMBDA_URL, json=data, headers=headers, timeout=14400) as req:
     #         return await req.json()
-    return await asyncio.get_event_loop().run_in_executor(None, ydl.extract_info, url, False)
+    return await asyncio.get_event_loop().run_in_executor(None,
+                                                          ydl.extract_info,
+                                                          url,
+                                                          download=False,
+                                                          force_generic_extractor=ydl.params.get('force_generic_extractor', False))
 
 
 async def send_settings(user, user_id, edit_id=None):
@@ -428,10 +432,7 @@ async def _on_message(message, log):
                     if vinfo is None:
                         for _ in range(2):
                             try:
-                                vinfo = await extract_url_info(ydl,
-                                                               u,
-                                                               params,
-                                                               force_generic_extractor=ydl.params.get('force_generic_extractor', False))
+                                vinfo = await extract_url_info(ydl, u)
                             except youtube_dl.DownloadError as e:
                                 # try to use invidio.us youtube frontend to bypass 429 block
                                 if e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429:
@@ -463,10 +464,10 @@ async def _on_message(message, log):
                 except Exception as e:
                     if "Please log in or sign up to view this video" in str(e):
                         if 'vk.com' in u:
-                            params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
-                            params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
+                            ydl.params['username'] = os.environ['VIDEO_ACCOUNT_USERNAME']
+                            ydl.params['password'] = os.environ['VIDEO_ACCOUNT_PASSWORD']
                             try:
-                                vinfo = await extract_url_info(u, params)
+                                vinfo = await extract_url_info(ydl, u)
                             except Exception as e:
                                 log.error(e)
                                 await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
@@ -478,9 +479,9 @@ async def _on_message(message, log):
                             # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     elif 'are video-only' in str(e):
-                        params['format'] = 'bestvideo[ext=mp4]'
+                        ydl.params['format'] = 'bestvideo[ext=mp4]'
                         try:
-                            vinfo = await extract_url_info(u, params)
+                            vinfo = await extract_url_info(ydl, u)
                         except Exception as e:
                             log.error(e)
                             await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)

@@ -7,3 +7,4 @@ urlextract==0.14.0
 aiohttp==3.6.2
 cloudant==2.12.0
 aiogram==2.6.1
+Pillow==7.0.0

@@ -1,0 +1,64 @@
+
+import aiohttp
+import io
+from PIL import Image
+from math import floor
+import av_source
+import av_utils
+from datetime import timedelta
+
+async def get_thumbnail(entry):
+    thumb_url = entry.get('thumbnail')
+    img_data = None
+    if thumb_url is None or thumb_url == 'none':
+        img_data = await get_image_from_video(entry['url'], entry['http_headers'])
+    else:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(thumb_url) as resp:
+                if resp.status != 200:
+                    return None
+                img_data = await resp.read()
+
+    if img_data:
+        thumb = io.BytesIO(img_data)
+        thumb.seek(0)
+        return resize_thumb(thumb)
+    else:
+        return None
+
+
+def resize_thumb(thumb):
+    try:
+        image = Image.open(thumb)
+    except Exception as e:
+        print('failed open image ' + str(e))
+        return None
+
+    width, height = image.size
+    if width <= 320 and height <= 320:
+        return thumb
+
+    n_width = n_height = None
+    if width > height:
+        n_width = 320
+        n_height = floor(n_width / (width / height))
+    else:
+        n_height = 320
+        n_width = floor(n_height / (height / width))
+
+    image.thumbnail((n_width, n_height))
+    new_image = io.BytesIO()
+    image.save(new_image, format="JPEG", quality=90)
+    new_image.seek(0)
+
+    return new_image
+
+
+async def get_image_from_video(url, headers=None):
+    vinfo = await av_utils.av_info(url, headers)
+    duration = int(float(vinfo['format']['duration']))
+    duration = int(duration / 3)
+    time = timedelta(seconds=duration)
+    return await av_source.video_screenshot(url, headers, screen_time=time)
+
+

@@ -17,6 +17,8 @@ import av_source
 import users
 import cut_time
 import tgaction
+import thumb
+import io
 import inspect
 import mimetypes
 from datetime import time
@@ -729,6 +731,7 @@ async def _on_message(message, log):
                                                       (cmd == 'a'))
                                                      and user.audio_caption) else ''
                         recover_playlist_index = None
+                        _thumb = await thumb.get_thumbnail(entry)
                         for i in range(10):
                             try:
                                 await client.send_file(bot_entity, file,
@@ -737,9 +740,10 @@ async def _on_message(message, log):
                                                        attributes=attributes,
                                                        caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
                                                        force_document=force_document,
-                                                       supports_streaming=False if ffmpeg_av is not None else True)
+                                                       supports_streaming=False if ffmpeg_av is not None else True,
+                                                       thumb=_thumb)
                             except Exception as e:
-                                log.error(e)
+                                log.exception(e)
                                 await asyncio.sleep(1)
                             finally:
                                 break

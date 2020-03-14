@@ -255,3 +255,25 @@ class URLav(DumbReader):
     async def close(self) -> None:
         # self.request.release()
         await self.session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
+
+
+async def video_screenshot(url, headers, screen_time=None, quality=5):
+    if headers:
+        headers = "\n".join(av_utils.dict_to_list(headers))
+
+    if screen_time:
+        _finput = ffmpeg.input(url, headers=headers, ss=screen_time)
+    else:
+        _finput = ffmpeg.input(url, headers=headers)
+    _fstream = _finput.output('pipe:',
+                              format='image2pipe',
+                              vcodec='mjpeg',
+                              **{'q:v': quality,
+                                 'vframes:v': 1})
+    args = _fstream.compile()
+    proc = await asyncio.create_subprocess_exec('ffmpeg',
+                                                *args[1:],
+                                                stdout=asyncio.subprocess.PIPE,
+                                                stderr=asyncio.subprocess.PIPE)
+
+    return await proc.stdout.read()

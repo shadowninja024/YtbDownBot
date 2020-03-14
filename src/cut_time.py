@@ -28,7 +28,7 @@ def parse_time(msg):
 
 def to_isotime(time: str):
     time = time.strip()
-    for f in ['%S', '%M:%S', '%H:%M:%S']:
+    for f in ['%S', '%M:%S', '%H:%M:%S', '%H:%M:%S.%f', '%M:%S.%f', '%S.%f']:
         try:
             return datetime.strptime(time, f).time()
         except ValueError:

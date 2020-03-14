@@ -282,6 +282,30 @@ async def send_settings(user, user_id, edit_id=None):
 is_ytb_link_re = re.compile('^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$')
 get_ytb_id_re = re.compile('.*(youtu.be\/|v\/|embed\/|watch\?|youtube.com\/user\/[^#]*#([^\/]*?\/)*)\??v?=?([^#\&\?]*).*')
 
+single_time_re = re.compile(' ((2[0-3]|[01]?[0-9]):)?(([0-5]?[0-9]):)?([0-5]?[0-9])(\\.[0-9]+)? ')
+async def send_screenshot(user_id, msg_txt, url, http_headers=None):
+    time_match = single_time_re.search(msg_txt)
+    pic_time = None
+    if time_match:
+        time_group = time_match.group()
+        pic_time = cut_time.to_isotime(time_group)
+
+    if pic_time:
+        vinfo = await av_utils.av_info(url, http_headers)
+        duration = int(float(vinfo['format']['duration']))
+        if cut_time.time_to_seconds(pic_time) >= duration:
+            pic_time = None
+
+    screenshot_data = await av_source.video_screenshot(url,
+                                                       http_headers,
+                                                       screen_time=str(pic_time) if pic_time else None,
+                                                       quality=1)
+    if not screenshot_data:
+        return
+
+    photo = io.BytesIO(screenshot_data)
+    await _bot.send_photo(user_id, photo)
+
 
 async def _on_message(message, log):
     if message['from']['is_bot']:
@@ -379,6 +403,9 @@ async def _on_message(message, log):
                                     reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
             #                        reply_to=msg_id)
+        elif cmd == 's':
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /s 23:14 youtube.com',
+                                    reply_to_message_id=msg_id)
         else:
             await _bot.send_message(chat_id, 'Please send me link to the video', reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
@@ -514,6 +541,13 @@ async def _on_message(message, log):
                     else:
                         http_headers = entry['http_headers']
                     http_headers['Referer'] = u
+
+                    if cmd == 's':
+                        await send_screenshot(chat_id,
+                                              msg_txt,
+                                              entry.get('url') if formats is None else formats[0].get('url'),
+                                              http_headers=http_headers)
+                        return
 
                     _cut_time = (cut_time_start, cut_time_end) if cut_time_start else None
                     if formats is not None:
@@ -781,7 +815,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c'] + playlist_cmds
+available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500
 

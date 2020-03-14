@@ -35,8 +35,6 @@ def resize_thumb(thumb):
         return None
 
     width, height = image.size
-    if width <= 320 and height <= 320:
-        return thumb
 
     n_width = n_height = None
     if width > height:

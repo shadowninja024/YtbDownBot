@@ -765,7 +765,12 @@ async def _on_message(message, log):
                                                       (cmd == 'a'))
                                                      and user.audio_caption) else ''
                         recover_playlist_index = None
-                        _thumb = await thumb.get_thumbnail(entry)
+                        _thumb = None
+                        try:
+                            _thumb = await thumb.get_thumbnail(entry)
+                        except Exception as e:
+                            log.warning('failed get thumbnail: ' + str(e))
+
                         for i in range(10):
                             try:
                                 await client.send_file(bot_entity, file,

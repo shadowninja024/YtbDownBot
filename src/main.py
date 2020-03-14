@@ -596,7 +596,21 @@ async def _on_message(message, log):
                             if ('m3u8' in f['protocol'] and
                                     (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = f
+                                acodec = f.get('acodec')
+                                if acodec is None or acodec == 'none':
+                                    if len(formats) > i + 1:
+                                        mformat = formats[i + 1]
+                                        if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
+                                            'filesize'] is not None:
+                                            msize = mformat['filesize']
+                                        else:
+                                            msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
+                                        msize +=  10 * 1024 * 1024
+                                        if (msize + file_size) / (1024 * 1024) > TG_MAX_FILE_SIZE:
+                                            mformat = None
+
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                            aformat=mformat,
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
                                                                             cut_time_range=_cut_time)

@@ -160,11 +160,11 @@ class FFMpegAV(DumbReader):
             args = _fstream.compile()
             if cut_time_start is not None:
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
-                       args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + ['-fs', '1520435200'] + \
-                       cut_time_fix_args + [args[-1]]
+                       args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + \
+                       ['-fs', '1520435200', '-shortest'] + cut_time_fix_args + [args[-1]]
             else:
                 args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
-                    '-fs', '1520435200'] + [args[-1]]
+                    '-fs', '1520435200', '-shortest'] + [args[-1]]
 
         else:
             args = _fstream.compile()

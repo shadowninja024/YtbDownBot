@@ -682,6 +682,9 @@ async def _on_message(message, log):
                                     chosen_format['ext'] = 'ogg'
                                 else:
                                     chosen_format['ext'] = ext
+                        chosen_format_vcodec = chosen_format.get('vcodec')
+                        if (chosen_format_vcodec is None or chosen_format_vcodec == 'none') and cmd != 'a':
+                            cmd = 'a'
                         if cmd == 'a':
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
@@ -804,7 +807,7 @@ async def _on_message(message, log):
                         log.exception(e)
                         if len(entries) - 1 == ie:
                             # raise exception for notify user about error
-                            raise
+                            raise Exception('INTERNAL ERROR: ' + str(e))
 
                 if recover_playlist_index is None:
                     break

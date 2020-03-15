@@ -473,7 +473,7 @@ async def _on_message(message, log):
                                         ytb_id_match = get_ytb_id_re.search(u)
                                         if ytb_id_match:
                                             ytb_id = ytb_id_match.groups()[-1]
-                                            u = "https://invidio.us/watch?v=" + ytb_id
+                                            u = "https://invidio.us/watch?v=" + ytb_id + "&quality=dash"
                                             if cmd == 'a':
                                                 u += '&listen=1'
                                             ydl.params['force_generic_extractor'] = True

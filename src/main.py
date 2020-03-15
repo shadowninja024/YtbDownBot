@@ -436,12 +436,14 @@ async def _on_message(message, log):
     # await _bot.send_chat_action(chat_id, "upload_document")
 
     async with tgaction.TGAction(_bot, chat_id, "upload_document"):
-        for u in set(urls):
+        urls = set(urls)
+        for iu, u in enumerate(urls):
             vinfo = None
             params = {'noplaylist': True,
                       'youtube_include_dash_manifest': False,
                       'quiet': True,
-                      'no_color': True}
+                      'no_color': True,
+                      'nocheckcertificate': True}
             if playlist_start != None and playlist_end != None:
                 if playlist_start == 0 and playlist_end == 0:
                     params['playliststart'] = 1
@@ -521,6 +523,11 @@ async def _on_message(message, log):
                             # await bot.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     else:
+                        if iu < len(urls) - 1:
+                            log.error(e)
+                            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+                            break
+
                         raise
 
                 entries = None

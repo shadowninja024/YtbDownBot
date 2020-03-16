@@ -568,7 +568,13 @@ async def _on_message(message, log):
                                 if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
                                     file_size = f['filesize']
                                 else:
-                                    file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
+                                    try:
+                                        file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
+                                    except Exception as e:
+                                        if i < len(formats) - 1 and '404 Not Found' in str(e):
+                                            break
+                                        else:
+                                            raise
 
                             # Dash video
                             if f['protocol'] == 'https' and \
@@ -689,9 +695,6 @@ async def _on_message(message, log):
                                     chosen_format['ext'] = 'ogg'
                                 else:
                                     chosen_format['ext'] = ext
-                        chosen_format_vcodec = chosen_format.get('vcodec')
-                        if (chosen_format_vcodec is None or chosen_format_vcodec == 'none') and cmd != 'a':
-                            cmd = 'a'
                         if cmd == 'a':
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
@@ -714,9 +717,13 @@ async def _on_message(message, log):
                             # info =  await av_utils.av_info(chosen_format['url'],
                             #                                use_m3u8=('m3u8' in chosen_format['protocol']))
                             info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
-                            width = info['streams'][0]['width']
-                            height = info['streams'][0]['height']
-                            duration = info['format']['duration']
+                            streams = info['streams']
+                            if len(streams) > 0:
+                                width = streams[0]['width']
+                                height = streams[0]['height']
+                            else:
+                                cmd = 'a'
+                            duration = int(float(info['format']['duration']))
                         else:
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
                                                       int(entry['duration']) if 'duration' not in entry else int(
@@ -808,8 +815,9 @@ async def _on_message(message, log):
                             except Exception as e:
                                 log.exception(e)
                                 await asyncio.sleep(1)
-                            finally:
-                                break
+                                continue
+
+                            break
                     except Exception as e:
                         log.exception(e)
                         if len(entries) - 1 == ie:

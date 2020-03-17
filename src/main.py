@@ -206,7 +206,11 @@ async def _on_message_task(message):
             # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
         except Exception as e:
             log.exception(e)
-            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+            if 'ERROR' not in e:
+                err_msg = 'ERROR: ' + str(e)
+            else:
+                err_msg = str(e)
+            await _bot.send_message(chat_id, err_msg, reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
     except Exception as e:
         logging.error(e)
@@ -485,7 +489,6 @@ async def _on_message(message, log):
 
                         log.debug('video info received')
                     else:
-                        params['format'] = pref_format
                         if '_type' in vinfo and vinfo['_type'] == 'playlist':
                             for i, e in enumerate(vinfo['entries']):
                                 e['requested_formats'] = None
@@ -557,60 +560,39 @@ async def _on_message(message, log):
                         return
 
                     _cut_time = (cut_time_start, cut_time_end) if cut_time_start else None
-                    if formats is not None:
-                        for i, f in enumerate(formats):
-                            if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
-                                # await bot.send_message(chat_id, "ERROR: Failed find suitable format for: " + entry['title'], reply_to=msg_id)
-                                continue
-                            if 'm3u8' in f['protocol']:
-                                file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
-                            else:
-                                if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
-                                    file_size = f['filesize']
+                    try:
+                        if formats is not None:
+                            for i, f in enumerate(formats):
+                                if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                                    # await bot.send_message(chat_id, "ERROR: Failed find suitable format for: " + entry['title'], reply_to=msg_id)
+                                    continue
+                                if 'm3u8' in f['protocol']:
+                                    file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
                                 else:
-                                    try:
-                                        file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
-                                    except Exception as e:
-                                        if i < len(formats) - 1 and '404 Not Found' in str(e):
-                                            break
-                                        else:
-                                            raise
-
-                            # Dash video
-                            if f['protocol'] == 'https' and \
-                                    (True if ('acodec' in f and (f['acodec'] == 'none' or f['acodec'] == None)) else False):
-                                vformat = f
-                                mformat = None
-                                vsize = 0
-                                if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None:
-                                    vsize = vformat['filesize']
-                                else:
-                                    vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
-                                msize = 0
-                                # if there is one more format than
-                                # it's likely an url to audio
-                                if len(formats) > i + 1:
-                                    mformat = formats[i + 1]
-                                    if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
-                                        'filesize'] is not None:
-                                        msize = mformat['filesize']
+                                    if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
+                                        file_size = f['filesize']
                                     else:
-                                        msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                                # we can't precisely predict media size so make it large for prevent cutting
-                                file_size = vsize + msize + 10 * 1024 * 1024
-                                if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
-                                    ffmpeg_av = await av_source.FFMpegAV.create(vformat,
-                                                                                mformat,
-                                                                                headers=http_headers,
-                                                                                cut_time_range=_cut_time)
-                                    chosen_format = f
-                                break
-                            # m3u8
-                            if ('m3u8' in f['protocol'] and
-                                    (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
-                                chosen_format = f
-                                acodec = f.get('acodec')
-                                if acodec is None or acodec == 'none':
+                                        try:
+                                            file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
+                                        except Exception as e:
+                                            if i < len(formats) - 1 and '404 Not Found' in str(e):
+                                                break
+                                            else:
+                                                raise
+
+                                # Dash video
+                                if f['protocol'] == 'https' and \
+                                        (True if ('acodec' in f and (f['acodec'] == 'none' or f['acodec'] == None)) else False):
+                                    vformat = f
+                                    mformat = None
+                                    vsize = 0
+                                    if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None:
+                                        vsize = vformat['filesize']
+                                    else:
+                                        vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
+                                    msize = 0
+                                    # if there is one more format than
+                                    # it's likely an url to audio
                                     if len(formats) > i + 1:
                                         mformat = formats[i + 1]
                                         if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
@@ -618,57 +600,79 @@ async def _on_message(message, log):
                                             msize = mformat['filesize']
                                         else:
                                             msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                                        msize +=  10 * 1024 * 1024
-                                        if (msize + file_size) / (1024 * 1024) > TG_MAX_FILE_SIZE:
-                                            mformat = None
+                                    # we can't precisely predict media size so make it large for prevent cutting
+                                    file_size = vsize + msize + 10 * 1024 * 1024
+                                    if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
+                                        ffmpeg_av = await av_source.FFMpegAV.create(vformat,
+                                                                                    mformat,
+                                                                                    headers=http_headers,
+                                                                                    cut_time_range=_cut_time)
+                                        chosen_format = f
+                                    break
+                                # m3u8
+                                if ('m3u8' in f['protocol'] and
+                                        (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
+                                    chosen_format = f
+                                    acodec = f.get('acodec')
+                                    if acodec is None or acodec == 'none':
+                                        if len(formats) > i + 1:
+                                            mformat = formats[i + 1]
+                                            if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
+                                                'filesize'] is not None:
+                                                msize = mformat['filesize']
+                                            else:
+                                                msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
+                                            msize +=  10 * 1024 * 1024
+                                            if (msize + file_size) / (1024 * 1024) > TG_MAX_FILE_SIZE:
+                                                mformat = None
 
+                                    ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                                aformat=mformat,
+                                                                                audio_only=True if cmd == 'a' else False,
+                                                                                headers=http_headers,
+                                                                                cut_time_range=_cut_time)
+                                    break
+                                # regular video stream
+                                if (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
+                                    chosen_format = f
+                                    if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                        ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                                    audio_only=True,
+                                                                                    headers=http_headers,
+                                                                                    cut_time_range=_cut_time)
+                                    break
+
+                        else:
+                            if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                                # await bot.send_message(chat_id, "ERROR: Failed find suitable format for : " + entry['title'], reply_to=msg_id)
+                                # if 'playlist' in entry and entry['playlist'] is not None:
+                                recover_playlist_index = ie
+                                break
+                            if 'm3u8' in entry['protocol']:
+                                file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
+                            else:
+                                if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
+                                    file_size = entry['filesize']
+                                else:
+                                    raise Exception('test')
+                                    file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
+                            if ('m3u8' in entry['protocol'] and
+                                    (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
+                                chosen_format = entry
+                                if entry.get('is_live') and not _cut_time:
+                                    _cut_time = (time(hour=0, minute=0, second=0), time(hour=0, minute=2, second=0))
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                            aformat=mformat,
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
                                                                             cut_time_range=_cut_time)
-                                break
-                            # regular video stream
-                            if (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
-                                chosen_format = f
+                            elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
+                                chosen_format = entry
                                 if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 audio_only=True,
                                                                                 headers=http_headers,
                                                                                 cut_time_range=_cut_time)
-                                break
 
-                    else:
-                        if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
-                            # await bot.send_message(chat_id, "ERROR: Failed find suitable format for : " + entry['title'], reply_to=msg_id)
-                            # if 'playlist' in entry and entry['playlist'] is not None:
-                            recover_playlist_index = ie
-                            break
-                        if 'm3u8' in entry['protocol']:
-                            file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
-                        else:
-                            if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
-                                file_size = entry['filesize']
-                            else:
-                                file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
-                        if ('m3u8' in entry['protocol'] and
-                                (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
-                            chosen_format = entry
-                            if entry.get('is_live') and not _cut_time:
-                                _cut_time = (time(hour=0, minute=0, second=0), time(hour=0, minute=2, second=0))
-                            ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                        audio_only=True if cmd == 'a' else False,
-                                                                        headers=http_headers,
-                                                                        cut_time_range=_cut_time)
-                        elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
-                            chosen_format = entry
-                            if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
-                                ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                            audio_only=True,
-                                                                            headers=http_headers,
-                                                                            cut_time_range=_cut_time)
-
-                    try:
                         if chosen_format is None and ffmpeg_av is None:
                             if len(preferred_formats) - 1 == ip:
                                 await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
@@ -751,6 +755,9 @@ async def _on_message(message, log):
                         file_name = entry['title'] + '.' + \
                                     (chosen_format[
                                          'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                        if file_size == 0:
+                            log.warning('file size is 0')
+
                         file_size = file_size if file_size != 0 and file_size < 1500 * 1024 * 1024 else 1500 * 1024 * 1024
 
                         ffmpeg_cancel_task = None
@@ -819,10 +826,12 @@ async def _on_message(message, log):
 
                             break
                     except Exception as e:
-                        log.exception(e)
-                        if len(entries) - 1 == ie:
+                        if len(preferred_formats) - 1 <= ip:
                             # raise exception for notify user about error
-                            raise Exception('INTERNAL ERROR: ' + str(e))
+                            raise
+                        else:
+                            log.warning(e)
+                            recover_playlist_index = ie
 
                 if recover_playlist_index is None:
                     break

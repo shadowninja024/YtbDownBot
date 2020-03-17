@@ -206,7 +206,7 @@ async def _on_message_task(message):
             # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
         except Exception as e:
             log.exception(e)
-            if 'ERROR' not in e:
+            if 'ERROR' not in str(e):
                 err_msg = 'ERROR: ' + str(e)
             else:
                 err_msg = str(e)
@@ -654,7 +654,6 @@ async def _on_message(message, log):
                                 if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
                                     file_size = entry['filesize']
                                 else:
-                                    raise Exception('test')
                                     file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
                             if ('m3u8' in entry['protocol'] and
                                     (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):

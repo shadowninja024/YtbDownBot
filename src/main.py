@@ -52,6 +52,14 @@ def get_client_session():
         return db['session' + instance_id]['session']
 
 
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
 def new_logger(user_id, msg_id):
     logger = logging.Logger('')
     logger.setLevel(logging.DEBUG)
@@ -674,8 +682,16 @@ async def _on_message(message, log):
 
                         if chosen_format is None and ffmpeg_av is None:
                             if len(preferred_formats) - 1 == ip:
-                                await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
-                                                        reply_to_message_id=msg_id)
+                                if file_size > 1500 * 1024 * 1024:
+                                    log.info('too big file ' + str(file_size))
+                                    await _bot.send_message(chat_id, f'ERROR: Too big video file size *{sizeof_fmt(file_size)}*,\n'
+                                                                     'you can try cut it by command like:\n `/c 0-10:00 ' + u+'`',
+                                                            reply_to_message_id=msg_id,
+                                                            parse_mode="Markdown")
+                                else:
+                                    log.info('failed find suitable video format')
+                                    await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                                            reply_to_message_id=msg_id)
                                 # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                                 return
                             # if 'playlist' in entry and entry['playlist'] is not None:

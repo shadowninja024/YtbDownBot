@@ -366,14 +366,16 @@ async def _on_message(message, log):
             urls_count = len(urls)
             if urls_count != 1:
                 await _bot.send_message(chat_id,
-                                        'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com",
-                                        reply_to_message_id=msg_id)
+                                        'Wrong command arguments. Correct example: `/' + cmd + " 2-4 youtube.com/playlist`",
+                                        reply_to_message_id=msg_id,
+                                        parse_mode='Markdown')
                 # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
-                await _bot.send_message(chat_id, 'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
-                                        reply_to_message_id=msg_id)
+                await _bot.send_message(chat_id, 'Wrong message format, correct example: `/' + cmd + " 4-9 " + 'youtube.com/playlist`',
+                                        reply_to_message_id=msg_id,
+                                        parse_mode='Markdown')
                 # await bot.send_message(chat_id,
                 #                        'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
                 #                        reply_to=msg_id)
@@ -406,18 +408,21 @@ async def _on_message(message, log):
 
     if len(urls) == 0:
         if cmd == 'a':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
-                                    reply_to_message_id=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/a youtube.com`',
+                                    reply_to_message_id=msg_id,
+                                    parse_mode='Markdown')
             # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
             #                        reply_to=msg_id)
         elif cmd == 'w':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
-                                    reply_to_message_id=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/w youtube.com`',
+                                    reply_to_message_id=msg_id,
+                                    parse_mode='Markdown')
             # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
             #                        reply_to=msg_id)
         elif cmd == 's':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: /s 23:14 youtube.com',
-                                    reply_to_message_id=msg_id)
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/s 23:14 youtube.com`',
+                                    reply_to_message_id=msg_id,
+                                    parse_mode='Markdown')
         else:
             await _bot.send_message(chat_id, 'Please send me link to the video', reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)

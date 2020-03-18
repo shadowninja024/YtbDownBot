@@ -671,9 +671,10 @@ async def _on_message(message, log):
                                 recover_playlist_index = ie
                                 break
                             if 'm3u8' in entry['protocol']:
-                                if cut_time_start is None:
+                                if cut_time_start is None and entry.get('is_live') is False:
                                     file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
                                 else:
+                                    # we don't know real size
                                     file_size = 0
                             else:
                                 if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None and entry['filesize'] != 'none':
@@ -684,7 +685,9 @@ async def _on_message(message, log):
                                     (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = entry
                                 if entry.get('is_live') and not _cut_time:
-                                    _cut_time = (time(hour=0, minute=0, second=0), time(hour=1, minute=0, second=0))
+                                    cut_time_start, cut_time_end = (time(hour=0, minute=0, second=0),
+                                                                    time(hour=1, minute=0, second=0))
+                                    _cut_time = (cut_time_start, cut_time_end)
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
@@ -731,7 +734,7 @@ async def _on_message(message, log):
                                     chosen_format['ext'] = 'ogg'
                                 else:
                                     chosen_format['ext'] = ext
-                        if cmd == 'a':
+                        if cmd == 'a' and file_size != 0:
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
                             file_size += 200000
@@ -766,15 +769,19 @@ async def _on_message(message, log):
                                                           entry['duration'])
 
                         # in case of video is live we don't know real duration
-                        if cut_time_start is not None and not entry.get('is_live'):
-                            if cut_time.time_to_seconds(cut_time_start) > duration:
-                                raise Exception('Cut start time is bigger than all media duration')
-                            if cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
-                                raise Exception('Cut end time is bigger than all media duration')
-                            if cut_time_end is None:
-                                duration = duration - cut_time.time_to_seconds(cut_time_start)
+                        if cut_time_start is not None:
+                            if not entry.get('is_live'):
+                                if cut_time.time_to_seconds(cut_time_start) > duration:
+                                    raise Exception('Cut start time is bigger than all media duration')
+                                elif cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
+                                    raise Exception('Cut end time is bigger than all media duration')
+                                elif cut_time_end is None:
+                                    duration = duration - cut_time.time_to_seconds(cut_time_start)
+                                else:
+                                    duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
                             else:
-                                duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
+                                duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(
+                                    cut_time_start)
 
                         if cut_time_start is not None and ffmpeg_av is None:
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,

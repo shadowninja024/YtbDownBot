@@ -45,8 +45,7 @@ async def av_info(url, http_headers=''):
                                                    '-headers',
                                                    http_headers,
                                                    url,
-                                                   stdout=asyncio.subprocess.PIPE,
-                                                   stderr=asyncio.subprocess.STDOUT)
+                                                   stdout=asyncio.subprocess.PIPE)
     # mi_proc = subprocess.Popen(['mediainfo', mediainf_args, '2>', '/dev/null', url],
     #                            stdout=subprocess.PIPE,
     #                            stderr=subprocess.STDOUT)

@@ -705,6 +705,7 @@ async def _on_message(message, log):
                                 if file_size > 1500 * 1024 * 1024:
                                     log.info('too big file ' + str(file_size))
                                     await _bot.send_message(chat_id, f'ERROR: Too big media file size *{sizeof_fmt(file_size)}*,\n'
+                                                                     'Telegram allow only up to *1.5GB*\n'
                                                                      'you can try cut it by command like:\n `/c 0-10:00 ' + u+'`',
                                                             reply_to_message_id=msg_id,
                                                             parse_mode="Markdown")

@@ -304,7 +304,7 @@ async def send_screenshot(user_id, msg_txt, url, http_headers=None):
 
     if pic_time:
         vinfo = await av_utils.av_info(url, http_headers)
-        duration = int(float(vinfo['format']['duration']))
+        duration = int(float(vinfo['format'].get('duration', 0)))
         if cut_time.time_to_seconds(pic_time) >= duration:
             pic_time = None
 
@@ -591,7 +591,7 @@ async def _on_message(message, log):
                                 if 'm3u8' in f['protocol']:
                                     file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
                                 else:
-                                    if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None:
+                                    if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None and f['filesize'] != 'none':
                                         file_size = f['filesize']
                                     else:
                                         try:
@@ -608,7 +608,7 @@ async def _on_message(message, log):
                                     vformat = f
                                     mformat = None
                                     vsize = 0
-                                    if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None:
+                                    if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None and vformat['filesize'] != 'none':
                                         vsize = vformat['filesize']
                                     else:
                                         vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
@@ -618,7 +618,7 @@ async def _on_message(message, log):
                                     if len(formats) > i + 1:
                                         mformat = formats[i + 1]
                                         if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
-                                            'filesize'] is not None:
+                                            'filesize'] is not None and mformat['filesize'] != 'none':
                                             msize = mformat['filesize']
                                         else:
                                             msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
@@ -640,7 +640,7 @@ async def _on_message(message, log):
                                         if len(formats) > i + 1:
                                             mformat = formats[i + 1]
                                             if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
-                                                'filesize'] is not None:
+                                                'filesize'] is not None and mformat['filesize'] != 'none':
                                                 msize = mformat['filesize']
                                             else:
                                                 msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
@@ -671,9 +671,12 @@ async def _on_message(message, log):
                                 recover_playlist_index = ie
                                 break
                             if 'm3u8' in entry['protocol']:
-                                file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
+                                if cut_time_start is None:
+                                    file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
+                                else:
+                                    file_size = 0
                             else:
-                                if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None:
+                                if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None and entry['filesize'] != 'none':
                                     file_size = entry['filesize']
                                 else:
                                     file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
@@ -681,7 +684,7 @@ async def _on_message(message, log):
                                     (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = entry
                                 if entry.get('is_live') and not _cut_time:
-                                    _cut_time = (time(hour=0, minute=0, second=0), time(hour=0, minute=2, second=0))
+                                    _cut_time = (time(hour=0, minute=0, second=0), time(hour=1, minute=0, second=0))
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
@@ -741,7 +744,7 @@ async def _on_message(message, log):
                                 # info = await av_utils.av_info(chosen_format['url'],
                                 #                               use_m3u8=('m3u8' in chosen_format['protocol']))
                                 info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
-                                duration = int(float(info['format']['duration']))
+                                duration = int(float(info['format'].get('duration', 0)))
                             else:
                                 duration = int(entry['duration']) if 'duration' not in entry else int(entry['duration'])
 
@@ -756,7 +759,7 @@ async def _on_message(message, log):
                                 height = streams[0]['height']
                             else:
                                 cmd = 'a'
-                            duration = int(float(info['format']['duration']))
+                            duration = int(float(info['format'].get('duration', 0)))
                         else:
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
                                                       int(entry['duration']) if 'duration' not in entry else int(

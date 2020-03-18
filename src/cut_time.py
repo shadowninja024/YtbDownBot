@@ -8,7 +8,7 @@ def parse_time(msg):
         ' ((2[0-3]|[01]?[0-9]):)?(([0-5]?[0-9]):)?([0-5]?[0-9])(-((2[0-3]|[01]?[0-9]):)?(([0-5]?[0-9]):)?([0-5]?[0-9]))? ')
     time_match = time_re.search(msg)
     if time_match is None:
-        raise Exception('Wrong time format, command example: /c 10:23-1:12:4 youtube.com')
+        raise Exception('Wrong time format')
     time_match = time_match.group()
 
     cut_time_start = cut_time_end = None

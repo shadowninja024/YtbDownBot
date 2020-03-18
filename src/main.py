@@ -349,11 +349,20 @@ async def _on_message(message, log):
             # await bot.send_message(chat_id, 'Wrong command', reply_to=msg_id)
             return
         elif cmd == 'start':
-            await _bot.send_message(chat_id, 'Send me a video links')
+            await _bot.send_message(chat_id, 'Send me a video link')
             # await bot.send_message(chat_id, 'Send me a video links')
             return
         elif cmd == 'c':
-            cut_time_start, cut_time_end = cut_time.parse_time(msg_txt)
+            try:
+                cut_time_start, cut_time_end = cut_time.parse_time(msg_txt)
+            except Exception as e:
+                if 'Wrong time format' == str(e):
+                    await _bot.send_message(chat_id,
+                                            'Wrong time format, correct example: `/c 10:23-1:12:4 youtube.com`',
+                                            parse_mode='Markdown')
+                    return
+                else:
+                    raise
         elif cmd == 'ping':
             await _bot.send_message(chat_id, 'pong')
             # await bot.send_message(chat_id, 'pong')

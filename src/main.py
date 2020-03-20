@@ -815,7 +815,7 @@ async def _on_message(message, log):
                             ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
 
                         # uploading piped ffmpeg file is slow anyway
-                        if file_size > 50*1024*1024 and ffmpeg_av is None:
+                        if file_size > 500*1024*1024 and ffmpeg_av is None:
                             file = await fast_telethon.upload_file(client, upload_file, file_size, file_name)
                         else:
                             file = await client.upload_file(upload_file,

@@ -2,7 +2,7 @@
 
 import sys, os
 from telethon import TelegramClient, Button, functions
-from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio
+from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio, DocumentAttributeFilename
 from telethon.sessions import StringSession
 import traceback
 import asyncio
@@ -758,13 +758,20 @@ async def _on_message(message, log):
                             # info =  await av_utils.av_info(chosen_format['url'],
                             #                                use_m3u8=('m3u8' in chosen_format['protocol']))
                             info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
-                            streams = info['streams']
-                            if len(streams) > 0:
-                                width = streams[0]['width']
-                                height = streams[0]['height']
-                            else:
-                                cmd = 'a'
-                            duration = int(float(info['format'].get('duration', 0)))
+                            try:
+                                streams = info['streams']
+                                if len(streams) > 0:
+                                    width = streams[0]['width']
+                                    height = streams[0]['height']
+                                else:
+                                    cmd = 'a'
+                                duration = int(float(info['format'].get('duration', 0)))
+                                format_name = info['format'].get('format_name', '').split(',')[0]
+                            except KeyError:
+                                width = 0
+                                height = 0
+                                duration = 0
+                                format_name = ''
                         else:
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
                                                       int(entry['duration']) if 'duration' not in entry else int(
@@ -786,16 +793,18 @@ async def _on_message(message, log):
                                     cut_time_start)
 
                         if cut_time_start is not None and ffmpeg_av is None:
+                            ext = chosen_format.get('ext')
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,
                                                                         cut_time_range=_cut_time,
-                                                                        ext=chosen_format.get('ext'))
+                                                                        ext=ext,
+                                                                        format_name=format_name if ext != 'mp4' else '')
                         upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
                             chosen_format['url'],
                             http_headers)
-                        file_name = entry['title'] + '.' + \
-                                    (chosen_format[
-                                         'ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+
+                        ext = (chosen_format['ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                        file_name = entry['title'] + '.' + ext
                         if file_size == 0:
                             log.warning('file size is 0')
 
@@ -830,13 +839,15 @@ async def _on_message(message, log):
                             title = entry['alt_title'] if ('alt_title' in entry) and \
                                                           (entry['alt_title'] is not None) else entry['title']
                             attributes = DocumentAttributeAudio(duration, title=title, performer=performer)
-                        else:
+                        elif ext == 'mp4':
                             attributes = DocumentAttributeVideo(duration,
                                                                 width,
                                                                 height,
                                                                 supports_streaming=False if ffmpeg_av is not None else True)
+                        else:
+                            attributes = DocumentAttributeFilename(file_name)
                         force_document = False
-                        if ffmpeg_av is None and (chosen_format['ext'] != 'mp4' and cmd != 'a'):
+                        if ext != 'mp4' and cmd != 'a':
                             force_document = True
                         log.debug('sending file')
                         video_note = False if cmd == 'a' or force_document else True

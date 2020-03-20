@@ -78,7 +78,7 @@ class FFMpegAV(DumbReader):
         self._buf = b''
 
     @staticmethod
-    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None, ext=None):
+    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None, ext=None, format_name=''):
         if headers != '':
             headers = "\n".join(av_utils.dict_to_list(headers))
         ff = FFMpegAV()
@@ -136,7 +136,10 @@ class FFMpegAV(DumbReader):
                                           acodec='mp3',
                                           **{'vn': None})
         else:
-            _format = ext if ext else 'mp4'
+            if format_name != '':
+                _format = format_name
+            else:
+                _format = ext if ext else 'mp4'
             _fstream = _finput.output('pipe:',
                                       format=_format,
                                       vcodec='copy',

@@ -838,7 +838,7 @@ async def _on_message(message, log):
                         voice_note = True if cmd == 'a' else False
                         attributes = ((attributes,) if not force_document else None)
                         caption = entry['title'] if (user.default_media_type == users.DefaultMediaType.Video.value
-                                                     and user.video_caption) or \
+                                                     and user.video_caption and cmd != 'a') or \
                                                     (((user.default_media_type == users.DefaultMediaType.Audio.value) or
                                                       (cmd == 'a'))
                                                      and user.audio_caption) else ''

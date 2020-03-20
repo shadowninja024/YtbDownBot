@@ -27,6 +27,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
 import signal
 import functools
+import fast_telethon
 
 
 def get_client_session():
@@ -804,10 +805,14 @@ async def _on_message(message, log):
                         if ffmpeg_av is not None:
                             ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
 
-                        file = await client.upload_file(upload_file,
-                                                        file_name=file_name,
-                                                        file_size=file_size,
-                                                        http_headers=http_headers)
+                        # uploading piped ffmpeg file is slow anyway
+                        if file_size > 20*1024*1024 and ffmpeg_av is None:
+                            file = await fast_telethon.upload_file(client, upload_file, file_size, file_name)
+                        else:
+                            file = await client.upload_file(upload_file,
+                                                            file_name=file_name,
+                                                            file_size=file_size,
+                                                            http_headers=http_headers)
 
                         if ffmpeg_cancel_task is not None and not ffmpeg_cancel_task.cancelled():
                             ffmpeg_cancel_task.cancel()

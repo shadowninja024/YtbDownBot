@@ -21,7 +21,7 @@ import thumb
 import io
 import inspect
 import mimetypes
-from datetime import time
+from datetime import time, timedelta
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
@@ -781,9 +781,17 @@ async def _on_message(message, log):
                         if cut_time_start is not None:
                             if not entry.get('is_live'):
                                 if cut_time.time_to_seconds(cut_time_start) > duration:
-                                    raise Exception('Cut start time is bigger than all media duration')
+                                    await _bot.send_message(chat_id,
+                                                            'ERROR: Cut start time is bigger than media duration: *' + str(timedelta(seconds=duration))+'*',
+                                                            parse_mode='Markdown')
+                                    return
                                 elif cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
-                                    raise Exception('Cut end time is bigger than all media duration')
+                                    await _bot.send_message(chat_id,
+                                                            'ERROR: Cut end time is bigger than media duration: *' + str(timedelta(seconds=duration)) +'*\n'
+                                                            'You can eliminate end time if you want it to be equal to media duration\n'
+                                                            'Like: `/c 1:24 youtube.com`',
+                                                            parse_mode='Markdown')
+                                    return
                                 elif cut_time_end is None:
                                     duration = duration - cut_time.time_to_seconds(cut_time_start)
                                 else:

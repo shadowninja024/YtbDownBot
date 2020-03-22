@@ -264,7 +264,7 @@ async def video_screenshot(url, headers=None, screen_time=None, quality=5):
     if headers:
         headers = "\n".join(av_utils.dict_to_list(headers))
 
-    args = {'-icy': '0'}
+    args = {'icy': '0'}
     if screen_time:
         args['ss'] = screen_time
     if headers:

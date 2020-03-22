@@ -495,7 +495,7 @@ async def _on_message(message, log):
                                 vinfo = await extract_url_info(ydl, u)
                             except youtube_dl.DownloadError as e:
                                 # try to use invidio.us youtube frontend to bypass 429 block
-                                if e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429:
+                                if (e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429) or 'video available in your country' in str(e):
                                     if is_ytb_link_re.search(u):
                                         ytb_id_match = get_ytb_id_re.search(u)
                                         if ytb_id_match:

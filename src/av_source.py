@@ -261,10 +261,10 @@ class URLav(DumbReader):
 
 
 async def video_screenshot(url, headers=None, screen_time=None, quality=5):
-    image_data = await _video_screenshot(url, headers, screen_time=time)
+    image_data = await _video_screenshot(url, headers, screen_time=screen_time, quality=quality)
     if len(image_data) == 0:
         # some sites return error if headers was passed
-        image_data = await _video_screenshot(url, screen_time=time)
+        image_data = await _video_screenshot(url, screen_time=screen_time, quality=quality)
 
     return image_data
 

@@ -598,9 +598,13 @@ async def _on_message(message, log):
                     http_headers['Referer'] = u
 
                     if cmd == 's':
+                        direct_url = entry.get('url') if formats is None else formats[0].get('url')
+                        if 'invidio.us' in direct_url:
+                            direct_url = normalize_url_path(direct_url)
+
                         await send_screenshot(chat_id,
                                               msg_txt,
-                                              entry.get('url') if formats is None else formats[0].get('url'),
+                                              direct_url,
                                               http_headers=http_headers)
                         return
 

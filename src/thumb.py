@@ -59,6 +59,7 @@ async def get_image_from_video(url, headers=None):
     time = timedelta(seconds=duration)
     image_data = await av_source.video_screenshot(url, headers, screen_time=time)
     if len(image_data) == 0:
-        return await av_source.video_screenshot(url, screen_time=time)
+        image_data = await av_source.video_screenshot(url, screen_time=time)
+    return image_data
 
 

@@ -15,6 +15,14 @@ def dict_to_list(_dict):
     return ret
 
 async def av_info(url, http_headers=''):
+    info = await _av_info(url, http_headers)
+    if len(info.keys()) == 0:
+        # some sites return error if headers was passed
+        return await _av_info(url)
+
+    return info
+
+async def _av_info(url, http_headers=''):
     # if use_m3u8:
     #     m3u8_obj = await asyncio.get_event_loop().run_in_executor(None, m3u8.load, url)
     #     url = m3u8_obj.segments[0].absolute_uri  # override for mediainfo call

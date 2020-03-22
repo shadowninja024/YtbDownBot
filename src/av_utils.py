@@ -18,7 +18,7 @@ async def av_info(url, http_headers=''):
     info = await _av_info(url, http_headers)
     if len(info.keys()) == 0:
         # some sites return error if headers was passed
-        return await _av_info(url)
+        info = await _av_info(url)
 
     return info
 
@@ -100,6 +100,7 @@ async def media_size(url, session=None, http_headers=None):
             else:
                 if 'Content-Length' in resp.headers:
                     content_length = int(resp.headers['Content-Length'])
+            resp.release()
 
     if session is None:
         await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)

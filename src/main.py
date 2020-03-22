@@ -329,6 +329,18 @@ def normalize_url_path(url):
     return urlunparse(parsed)
 
 
+def youtube_to_invidio(url, audio=False):
+    u = None
+    if is_ytb_link_re.search(url):
+        ytb_id_match = get_ytb_id_re.search(url)
+        if ytb_id_match:
+            ytb_id = ytb_id_match.groups()[-1]
+            u = "https://invidio.us/watch?v=" + ytb_id + "&quality=dash"
+            if audio:
+                u += '&listen=1'
+    return u
+
+
 async def _on_message(message, log):
     if message['from']['is_bot']:
         log.info('Message from bot, skip')
@@ -502,21 +514,22 @@ async def _on_message(message, log):
                         for _ in range(2):
                             try:
                                 vinfo = await extract_url_info(ydl, u)
+                                if vinfo.get('age_limit') == 18 and is_ytb_link_re.search(vinfo.get('webpage_url', '')):
+                                    raise youtube_dl.DownloadError('youtube age limit')
                             except youtube_dl.DownloadError as e:
                                 # try to use invidio.us youtube frontend to bypass 429 block
-                                if (e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429) or 'video available in your country' in str(e):
-                                    if is_ytb_link_re.search(u):
-                                        ytb_id_match = get_ytb_id_re.search(u)
-                                        if ytb_id_match:
-                                            ytb_id = ytb_id_match.groups()[-1]
-                                            u = "https://invidio.us/watch?v=" + ytb_id + "&quality=dash"
-                                            if cmd == 'a':
-                                                u += '&listen=1'
-                                            ydl.params['force_generic_extractor'] = True
-                                            continue
+                                if (e.exc_info is not None and e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429) or \
+                                        'video available in your country' in str(e) or \
+                                        'youtube age limit' == str(e):
+                                    invid_url = youtube_to_invidio(u, cmd == 'a')
+                                    if invid_url:
+                                        u = invid_url
+                                        ydl.params['force_generic_extractor'] = True
+                                        continue
                                     raise
                                 else:
                                     raise
+
                             break
 
                         log.debug('video info received')

@@ -261,6 +261,13 @@ class URLav(DumbReader):
 
 
 async def video_screenshot(url, headers=None, screen_time=None, quality=5):
+    image_data = await _video_screenshot(url, headers, screen_time=time)
+    if len(image_data) == 0:
+        image_data = await _video_screenshot(url, screen_time=time)
+
+    return image_data
+
+async def _video_screenshot(url, headers=None, screen_time=None, quality=5):
     if headers:
         headers = "\n".join(av_utils.dict_to_list(headers))
 

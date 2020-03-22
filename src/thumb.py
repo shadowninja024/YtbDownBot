@@ -57,9 +57,6 @@ async def get_image_from_video(url, headers=None):
     duration = int(float(vinfo['format']['duration']))
     duration = int(duration / 3)
     time = timedelta(seconds=duration)
-    image_data = await av_source.video_screenshot(url, headers, screen_time=time)
-    if len(image_data) == 0:
-        image_data = await av_source.video_screenshot(url, screen_time=time)
-    return image_data
+    return await av_source.video_screenshot(url, headers, screen_time=time)
 
 

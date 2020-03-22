@@ -625,7 +625,7 @@ async def _on_message(message, log):
                                             msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
                                     # we can't precisely predict media size so make it large for prevent cutting
                                     file_size = vsize + msize + 10 * 1024 * 1024
-                                    if file_size / (1024 * 1024) < TG_MAX_FILE_SIZE or cut_time_start is not None:
+                                    if file_size < TG_MAX_FILE_SIZE or cut_time_start is not None:
                                         ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                                     mformat,
                                                                                     headers=http_headers,
@@ -634,7 +634,7 @@ async def _on_message(message, log):
                                     break
                                 # m3u8
                                 if ('m3u8' in f['protocol'] and
-                                        (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
+                                        (file_size <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                     chosen_format = f
                                     acodec = f.get('acodec')
                                     if acodec is None or acodec == 'none':
@@ -645,8 +645,8 @@ async def _on_message(message, log):
                                                 msize = mformat['filesize']
                                             else:
                                                 msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                                            msize +=  10 * 1024 * 1024
-                                            if (msize + file_size) / (1024 * 1024) > TG_MAX_FILE_SIZE:
+                                            msize += 10 * 1024 * 1024
+                                            if (msize + file_size) > TG_MAX_FILE_SIZE:
                                                 mformat = None
 
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
@@ -656,7 +656,7 @@ async def _on_message(message, log):
                                                                                 cut_time_range=_cut_time)
                                     break
                                 # regular video stream
-                                if (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
+                                if (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                     chosen_format = f
                                     if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
@@ -683,7 +683,7 @@ async def _on_message(message, log):
                                 else:
                                     file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
                             if ('m3u8' in entry['protocol'] and
-                                    (file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
+                                    (file_size <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = entry
                                 if entry.get('is_live') and not _cut_time:
                                     cut_time_start, cut_time_end = (time(hour=0, minute=0, second=0),
@@ -693,7 +693,7 @@ async def _on_message(message, log):
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
                                                                             cut_time_range=_cut_time)
-                            elif (0 < file_size / (1024 * 1024) <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
+                            elif (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                 chosen_format = entry
                                 if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
@@ -703,7 +703,7 @@ async def _on_message(message, log):
 
                         if chosen_format is None and ffmpeg_av is None:
                             if len(preferred_formats) - 1 == ip:
-                                if file_size > 1500 * 1024 * 1024:
+                                if file_size > TG_MAX_FILE_SIZE:
                                     log.info('too big file ' + str(file_size))
                                     await _bot.send_message(chat_id, f'ERROR: Too big media file size *{sizeof_fmt(file_size)}*,\n'
                                                                      'Telegram allow only up to *1.5GB*\n'
@@ -816,7 +816,7 @@ async def _on_message(message, log):
                         if file_size == 0:
                             log.warning('file size is 0')
 
-                        file_size = file_size if file_size != 0 and file_size < 1500 * 1024 * 1024 else 1500 * 1024 * 1024
+                        file_size = file_size if file_size != 0 and file_size < TG_MAX_FILE_SIZE else TG_MAX_FILE_SIZE
 
                         ffmpeg_cancel_task = None
                         if ffmpeg_av is not None:
@@ -927,7 +927,7 @@ playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
 available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
 
-TG_MAX_FILE_SIZE = 1500
+TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 
 
 async def init_bot_enitty():

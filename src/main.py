@@ -739,7 +739,7 @@ async def _on_message(message, log):
                         if cmd == 'a' and file_size != 0:
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
-                            file_size += 200000
+                            file_size += 5242880 # 5MB
 
                         log.debug('uploading file')
 

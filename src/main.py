@@ -25,6 +25,7 @@ from datetime import time, timedelta
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.error import HTTPError
+from urllib.parse import urlparse, urlunparse
 import signal
 import functools
 import fast_telethon
@@ -320,6 +321,14 @@ async def send_screenshot(user_id, msg_txt, url, http_headers=None):
     await _bot.send_photo(user_id, photo)
 
 
+def normalize_url_path(url):
+
+    parsed = list(urlparse(url))
+    parsed[2] = re.sub("/{2,}", "/", parsed[2])
+
+    return urlunparse(parsed)
+
+
 async def _on_message(message, log):
     if message['from']['is_bot']:
         log.info('Message from bot, skip')
@@ -596,7 +605,10 @@ async def _on_message(message, log):
                                         file_size = f['filesize']
                                     else:
                                         try:
-                                            file_size = await av_utils.media_size(f['url'], http_headers=http_headers)
+                                            direct_url = f['url']
+                                            if 'invidio.us' in direct_url:
+                                                direct_url = normalize_url_path(direct_url)
+                                            file_size = await av_utils.media_size(direct_url, http_headers=http_headers)
                                         except Exception as e:
                                             if i < len(formats) - 1 and '404 Not Found' in str(e):
                                                 break
@@ -609,6 +621,11 @@ async def _on_message(message, log):
                                     vformat = f
                                     mformat = None
                                     vsize = 0
+
+                                    direct_url = vformat['url']
+                                    if 'invidio.us' in direct_url:
+                                        vformat['url'] = normalize_url_path(direct_url)
+
                                     if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None and vformat['filesize'] != 'none':
                                         vsize = vformat['filesize']
                                     else:
@@ -618,6 +635,11 @@ async def _on_message(message, log):
                                     # it's likely an url to audio
                                     if len(formats) > i + 1:
                                         mformat = formats[i + 1]
+
+                                        direct_url = mformat['url']
+                                        if 'invidio.us' in direct_url:
+                                            mformat['url'] = normalize_url_path(direct_url)
+
                                         if 'filesize' in mformat and mformat['filesize'] != 0 and mformat[
                                             'filesize'] is not None and mformat['filesize'] != 'none':
                                             msize = mformat['filesize']
@@ -658,6 +680,11 @@ async def _on_message(message, log):
                                 # regular video stream
                                 if (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                     chosen_format = f
+
+                                    direct_url = chosen_format['url']
+                                    if 'invidio.us' in direct_url:
+                                        chosen_format['url'] = normalize_url_path(direct_url)
+
                                     if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                     audio_only=True,
@@ -681,7 +708,10 @@ async def _on_message(message, log):
                                 if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None and entry['filesize'] != 'none':
                                     file_size = entry['filesize']
                                 else:
-                                    file_size = await av_utils.media_size(entry['url'], http_headers=http_headers)
+                                    direct_url = entry['url']
+                                    if 'invidio.us' in direct_url:
+                                        entry['url'] = normalize_url_path(direct_url)
+                                    file_size = await av_utils.media_size(direct_url, http_headers=http_headers)
                             if ('m3u8' in entry['protocol'] and
                                     (file_size <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = entry
@@ -695,6 +725,9 @@ async def _on_message(message, log):
                                                                             cut_time_range=_cut_time)
                             elif (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                 chosen_format = entry
+                                direct_url = chosen_format['url']
+                                if 'invidio.us' in direct_url:
+                                    chosen_format['url'] = normalize_url_path(direct_url)
                                 if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 audio_only=True,

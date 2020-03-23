@@ -879,7 +879,7 @@ async def _on_message(message, log):
                                 connections = 2
                                 if TG_CONNECTIONS_COUNT < 10 and file_size > 100*1024*1024:
                                     connections = 10
-                                elif 10 <= TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
+                                elif TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
                                     connections = 5
 
                                 TG_CONNECTIONS_COUNT += connections

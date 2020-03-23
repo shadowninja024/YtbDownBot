@@ -100,7 +100,6 @@ async def media_size(url, session=None, http_headers=None):
             else:
                 if 'Content-Length' in resp.headers:
                     content_length = int(resp.headers['Content-Length'])
-            resp.release()
 
     if session is None:
         await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)

@@ -871,10 +871,27 @@ async def _on_message(message, log):
                         ffmpeg_cancel_task = None
                         if ffmpeg_av is not None:
                             ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
-
+                        global TG_CONNECTIONS_COUNT
+                        global TG_MAX_PARALLEL_CONNECTIONS
                         # uploading piped ffmpeg file is slow anyway
-                        if file_size > 500*1024*1024 and ffmpeg_av is None:
-                            file = await fast_telethon.upload_file(client, upload_file, file_size, file_name)
+                        if file_size > 20*1024*1024 and ffmpeg_av is None and TG_CONNECTIONS_COUNT < TG_MAX_PARALLEL_CONNECTIONS:
+                            try:
+                                connections = 2
+                                if TG_CONNECTIONS_COUNT < 10 and file_size > 100*1024*1024:
+                                    connections = 10
+                                elif 10 <= TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
+                                    connections = 5
+
+                                TG_CONNECTIONS_COUNT += connections
+                                file = await fast_telethon.upload_file(client,
+                                                                       upload_file,
+                                                                       file_size,
+                                                                       file_name,
+                                                                       max_connection=connections)
+                            except:
+                                raise
+                            finally:
+                                TG_CONNECTIONS_COUNT -= connections
                         else:
                             file = await client.upload_file(upload_file,
                                                             file_name=file_name,
@@ -978,6 +995,8 @@ playlist_cmds = ['p', 'pa', 'pw']
 available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
+TG_MAX_PARALLEL_CONNECTIONS = 30
+TG_CONNECTIONS_COUNT = 0
 
 
 async def init_bot_enitty():

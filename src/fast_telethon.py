@@ -121,7 +121,9 @@ class ParallelTransferrer:
 
     @staticmethod
     def _get_connection_count(file_size: int, max_count: int = 2,
-                              full_size: int = 1000 * 1024 * 1024) -> int:
+                              full_size: int = 20 * 1024 * 1024) -> int:
+        if not max_count:
+            return 2
         if file_size > full_size:
             return max_count
         return math.ceil((file_size / full_size) * max_count)
@@ -185,8 +187,8 @@ class ParallelTransferrer:
         return sender
 
     async def init_upload(self, file_id: int, file_size: int, part_size_kb: Optional[float] = None,
-                          connection_count: Optional[int] = None) -> Tuple[int, int, bool]:
-        connection_count = connection_count or self._get_connection_count(file_size)
+                          connection_count: Optional[int] = None, max_connection=None) -> Tuple[int, int, bool]:
+        connection_count = connection_count or self._get_connection_count(file_size, max_count=max_connection)
         print("init_upload count is ", connection_count)
         part_size = (part_size_kb or utils.get_appropriated_part_size(file_size)) * 1024
         part_count = (file_size + part_size - 1) // part_size
@@ -237,14 +239,15 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
                                          response: BinaryIO,
                                          file_size,
                                          file_name,
-                                         progress_callback: callable
+                                         progress_callback: callable,
+                                         max_connection=None
                                          ) -> Tuple[TypeInputFile, int]:
     file_id = helpers.generate_random_long()
     # file_size = os.path.getsize(response.name)
 
     hash_md5 = hashlib.md5()
     uploader = ParallelTransferrer(client)
-    part_size, part_count, is_large = await uploader.init_upload(file_id, file_size)
+    part_size, part_count, is_large = await uploader.init_upload(file_id, file_size, max_connection=max_connection)
     buffer = bytearray()
     part_index = 0
     async for data in stream_file(response, chunk_size=part_size):
@@ -303,7 +306,7 @@ async def upload_file(client: TelegramClient,
                                         file_size,
                                         file_name,
                                         progress_callback: callable = None,
-
+                                        max_connection=None
                                         ) -> TypeInputFile:
-    res = (await _internal_transfer_to_telegram(client, file, file_size, file_name, progress_callback))[0]
+    res = (await _internal_transfer_to_telegram(client, file, file_size, file_name, progress_callback, max_connection=max_connection))[0]
     return res

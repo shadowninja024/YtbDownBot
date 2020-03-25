@@ -740,7 +740,7 @@ async def _on_message(message, log):
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
                                                                             cut_time_range=_cut_time)
-                            elif (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
+                            elif (file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                 chosen_format = entry
                                 direct_url = chosen_format['url']
                                 if 'invidio.us' in direct_url:

@@ -769,23 +769,6 @@ async def _on_message(message, log):
                             # if 'playlist' in entry and entry['playlist'] is not None:
                             recover_playlist_index = ie
                             break
-                        if chosen_format['ext'] == 'unknown_video':
-                            mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
-                            ext = mimetypes.guess_extension(mime)
-                            if ext is None or ext == '':
-                                if len(preferred_formats) - 1 == ip:
-                                    await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
-                                                            reply_to_message_id=msg_id)
-                                # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                                continue
-                            else:
-                                ext = ext[1:]
-                                if mime.split('/')[0] == 'audio' and ext == 'webm':
-                                    # telegram treat webm audio as video
-                                    # so use ogg ext to force audio
-                                    chosen_format['ext'] = 'ogg'
-                                else:
-                                    chosen_format['ext'] = ext
                         if cmd == 'a' and file_size != 0:
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
@@ -794,6 +777,7 @@ async def _on_message(message, log):
                         log.debug('uploading file')
 
                         width = height = duration = None
+                        format_name = ''
                         if cmd == 'a':
                             if ('duration' not in entry and 'duration' not in chosen_format):
                                 # info = await av_utils.av_info(chosen_format['url'],
@@ -827,6 +811,30 @@ async def _on_message(message, log):
                                                       int(entry['duration']) if 'duration' not in entry else int(
                                                           entry['duration'])
 
+                        if 'mp4 - unknown' in chosen_format.get('format', '') and chosen_format.get('ext', '') != 'mp4':
+                            chosen_format['ext'] = 'mp4'
+                        elif 'unknown' in chosen_format['ext']:
+                            mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
+                            ext = mimetypes.guess_extension(mime)
+                            if ext is None or ext == '':
+                                if format_name is None:
+                                    if len(preferred_formats) - 1 == ip:
+                                        await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                                                reply_to_message_id=msg_id)
+                                    # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                                    continue
+                                else:
+                                    chosen_format['ext'] = format_name
+                            else:
+                                ext = ext[1:]
+                                media_type = mime.split('/')[0]
+                                if media_type != 'audio' and media_type != 'video' and format_name != '':
+                                    if format_name == 'mov':
+                                        format_name = 'mp4'
+                                    chosen_format['ext'] = format_name
+                                else:
+                                    chosen_format['ext'] = ext
+
                         # in case of video is live we don't know real duration
                         if cut_time_start is not None:
                             if not entry.get('is_live'):
@@ -856,7 +864,7 @@ async def _on_message(message, log):
                                                                         headers=http_headers,
                                                                         cut_time_range=_cut_time,
                                                                         ext=ext,
-                                                                        format_name=format_name if ext != 'mp4' else '')
+                                                                        format_name=format_name if ext != 'mp4' and format_name != '' else '')
                         upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
                             chosen_format['url'],
                             http_headers)

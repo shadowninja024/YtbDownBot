@@ -3,7 +3,7 @@ Telegram bot that utilize youtube-dl functionality for downloading video directl
 Simple clone of https://t.me/VideoTubeBot.
 
 # Dependencies
-Install `ffmpeg`, `mediainfo` and `python3`.
+Install `ffmpeg` and `python3`.
 
 Python3 dependencies install via `pip3 install -r requirements.txt`
 # Running
@@ -30,8 +30,3 @@ for bypass limit in 50MB) and bot:
 
 Note: for deploying webhook branch you must set also webhook url via calling `https://api.telegram.org/bot<bot-token>/setWebhook?url=<webhook-url>` (`webhook-url` path is `bot_domanin+/bot` like `mybot.com/bot`) Use master branch if you want to use polling instead.
 
-Build by:
-`go build`
-
-Run by:
-`./YtbDownBot`

@@ -228,6 +228,15 @@ class URLav(DumbReader):
 
     @staticmethod
     async def create(url, headers=None):
+        urlav = await URLav._create(url, headers)
+        if urlav.request.status != 200:
+            await urlav.close()
+            urlav = await URLav._create(url)
+        return urlav
+
+
+    @staticmethod
+    async def _create(url, headers=None):
         u = URLav()
         timeout = ClientTimeout(total=3600)
         u.session = await ClientSession(timeout=timeout).__aenter__()

@@ -80,28 +80,41 @@ async def _av_info(url, http_headers=''):
 
 
 async def media_size(url, session=None, http_headers=None):
+    content_length = None
+    try:
+        content_length = await _media_size(url, session, http_headers)
+    except Exception as e:
+        print(e)
+
+    if content_length is not None:
+        return content_length
+
+    return await _media_size(url, session)
+
+async def _media_size(url, session=None, http_headers=None):
     _session = None
     if session is None:
         _session = await ClientSession().__aenter__()
     else:
         _session = session
     content_length = 0
-    async with _session.head(url, headers=http_headers, allow_redirects=True) as resp:
-        if resp.status != 200:
-            print('Request to url {} failed: '.format(url) + responses[resp.status])
-        else:
-            content_length = int(resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
-
-    # try GET request when HEAD failed
-    if content_length < 100:
-        async with _session.get(url, headers=http_headers) as get_resp:
-            if get_resp.status != 200:
-                raise Exception('Request failed: ' + str(get_resp.status) + " " + responses[get_resp.status])
+    try:
+        async with _session.head(url, headers=http_headers, allow_redirects=True) as resp:
+            if resp.status != 200:
+                print('Request to url {} failed: '.format(url) + responses[resp.status])
             else:
-                content_length = int(get_resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
+                content_length = int(resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
 
-    if session is None:
-        await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
+        # try GET request when HEAD failed
+        if content_length < 100:
+            async with _session.get(url, headers=http_headers) as get_resp:
+                if get_resp.status != 200:
+                    raise Exception('Request failed: ' + str(get_resp.status) + " " + responses[get_resp.status])
+                else:
+                    content_length = int(get_resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
+    finally:
+        if session is None:
+            await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
 
     return content_length
     # head_req = request.Request(url, method='HEAD', headers=http_headers)

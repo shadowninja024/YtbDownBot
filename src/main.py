@@ -66,10 +66,11 @@ def new_logger(user_id, msg_id):
     logger = logging.Logger('')
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter("%(levelname)s <%(id)s> [%(msgid)s]: %(message)s")
+    instance_id = os.getenv('INSTANCE_INDEX', 0)
+    formatter = logging.Formatter("%(levelname)s<%(id)s>[%(msgid)s](%(in_id)s): %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-    logaugment.set(logger, id=str(user_id), msgid=str(msg_id))
+    logaugment.set(logger, id=str(user_id), msgid=str(msg_id), in_id=str(instance_id))
 
     return logger
 

@@ -597,6 +597,10 @@ async def _on_message(message, log):
                         http_headers = entry['http_headers']
                     http_headers['Referer'] = u
 
+                    _title = entry.get('title', '')
+                    if _title == '':
+                        entry['title'] = str(msg_id)
+
                     if cmd == 's':
                         direct_url = entry.get('url') if formats is None else formats[0].get('url')
                         if 'invidio.us' in direct_url:

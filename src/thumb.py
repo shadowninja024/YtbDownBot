@@ -54,8 +54,12 @@ def resize_thumb(thumb):
 
 async def get_image_from_video(url, headers=None):
     vinfo = await av_utils.av_info(url, headers)
-    duration = int(float(vinfo['format']['duration']))
-    duration = int(duration / 3)
+    _format = vinfo.get('format')
+    if _format:
+        duration = int(float(vinfo['format']['duration']))
+        duration = int(duration / 3)
+    else:
+        duration = 5
     time = timedelta(seconds=duration)
     return await av_source.video_screenshot(url, headers, screen_time=time)
 

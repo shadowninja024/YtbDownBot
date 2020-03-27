@@ -29,6 +29,7 @@ from urllib.parse import urlparse, urlunparse
 import signal
 import functools
 import fast_telethon
+import aiofiles
 
 
 def get_client_session():
@@ -343,6 +344,7 @@ def youtube_to_invidio(url, audio=False):
 
 
 async def _on_message(message, log):
+    global STORAGE_SIZE
     if message['from']['is_bot']:
         log.info('Message from bot, skip')
         return
@@ -668,12 +670,18 @@ async def _on_message(message, log):
                                         else:
                                             msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
                                     # we can't precisely predict media size so make it large for prevent cutting
-                                    file_size = vsize + msize + 10 * 1024 * 1024
+                                    file_size = vsize + msize + 5 * 1024 * 1024
                                     if file_size < TG_MAX_FILE_SIZE or cut_time_start is not None:
+                                        file_name = None
+                                        if not cut_time_start and STORAGE_SIZE > file_size > 0:
+                                            STORAGE_SIZE -= file_size
+                                            _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                            file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
                                         ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                                     mformat,
                                                                                     headers=http_headers,
-                                                                                    cut_time_range=_cut_time)
+                                                                                    cut_time_range=_cut_time,
+                                                                                    file_name=file_name)
                                         chosen_format = f
                                     break
                                 # m3u8
@@ -689,15 +697,23 @@ async def _on_message(message, log):
                                                 msize = mformat['filesize']
                                             else:
                                                 msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                                            msize += 10 * 1024 * 1024
+                                            msize += 5 * 1024 * 1024
                                             if (msize + file_size) > TG_MAX_FILE_SIZE:
                                                 mformat = None
+                                            else:
+                                                file_size += msize
 
+                                    file_name = None
+                                    if not cut_time_start and STORAGE_SIZE > file_size > 0:
+                                        STORAGE_SIZE -= file_size
+                                        _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                        file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 aformat=mformat,
                                                                                 audio_only=True if cmd == 'a' else False,
                                                                                 headers=http_headers,
-                                                                                cut_time_range=_cut_time)
+                                                                                cut_time_range=_cut_time,
+                                                                                file_name=file_name)
                                     break
                                 # regular video stream
                                 if (0 < file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
@@ -708,10 +724,16 @@ async def _on_message(message, log):
                                         chosen_format['url'] = normalize_url_path(direct_url)
 
                                     if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                        file_name = None
+                                        if not cut_time_start and STORAGE_SIZE > file_size > 0:
+                                            STORAGE_SIZE -= file_size
+                                            file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry[
+                                                'title'] + '.' + 'mp3'
                                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                     audio_only=True,
                                                                                     headers=http_headers,
-                                                                                    cut_time_range=_cut_time)
+                                                                                    cut_time_range=_cut_time,
+                                                                                    file_name=file_name)
                                     break
 
                         else:
@@ -721,7 +743,7 @@ async def _on_message(message, log):
                                 recover_playlist_index = ie
                                 break
                             if 'm3u8' in entry['protocol']:
-                                if cut_time_start is None and entry.get('is_live') is False:
+                                if cut_time_start is None and entry.get('is_live', False) is False:
                                     file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
                                 else:
                                     # we don't know real size
@@ -741,20 +763,32 @@ async def _on_message(message, log):
                                     cut_time_start, cut_time_end = (time(hour=0, minute=0, second=0),
                                                                     time(hour=1, minute=0, second=0))
                                     _cut_time = (cut_time_start, cut_time_end)
+                                file_name = None
+                                if not cut_time_start and STORAGE_SIZE > file_size > 0:
+                                    STORAGE_SIZE -= file_size
+                                    _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                    file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             audio_only=True if cmd == 'a' else False,
                                                                             headers=http_headers,
-                                                                            cut_time_range=_cut_time)
+                                                                            cut_time_range=_cut_time,
+                                                                            file_name=file_name)
                             elif (file_size <= TG_MAX_FILE_SIZE) or cut_time_start is not None:
                                 chosen_format = entry
                                 direct_url = chosen_format['url']
                                 if 'invidio.us' in direct_url:
                                     chosen_format['url'] = normalize_url_path(direct_url)
                                 if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                    file_name = None
+                                    if not cut_time_start and STORAGE_SIZE > file_size > 0:
+                                        STORAGE_SIZE -= file_size
+                                        file_name = str(chat_id) + ':' + str(msg_id) + ':' + \
+                                                    entry['title'] + '.' + 'mp3'
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 audio_only=True,
                                                                                 headers=http_headers,
-                                                                                cut_time_range=_cut_time)
+                                                                                cut_time_range=_cut_time,
+                                                                                file_name=file_name)
 
                         if chosen_format is None and ffmpeg_av is None:
                             if len(preferred_formats) - 1 == ip:
@@ -766,15 +800,15 @@ async def _on_message(message, log):
                                                             reply_to_message_id=msg_id,
                                                             parse_mode="Markdown")
                                 else:
-                                    log.info('failed find suitable video format')
-                                    await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                    log.info('failed find suitable media format')
+                                    await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
                                                             reply_to_message_id=msg_id)
                                 # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                                 return
                             # if 'playlist' in entry and entry['playlist'] is not None:
                             recover_playlist_index = ie
                             break
-                        if cmd == 'a' and file_size != 0:
+                        if cmd == 'a' and file_size != 0 and (ffmpeg_av is None or ffmpeg_av.file_name is None):
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
                             file_size += 5242880 # 5MB
@@ -824,7 +858,7 @@ async def _on_message(message, log):
                             if ext is None or ext == '':
                                 if format_name is None:
                                     if len(preferred_formats) - 1 == ip:
-                                        await _bot.send_message(chat_id, "ERROR: Failed find suitable video format",
+                                        await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
                                                                 reply_to_message_id=msg_id)
                                     # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                                     continue
@@ -886,39 +920,57 @@ async def _on_message(message, log):
                             ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
                         global TG_CONNECTIONS_COUNT
                         global TG_MAX_PARALLEL_CONNECTIONS
-                        # uploading piped ffmpeg file is slow anyway
-                        if file_size > 20*1024*1024 and ffmpeg_av is None and TG_CONNECTIONS_COUNT < TG_MAX_PARALLEL_CONNECTIONS:
-                            try:
-                                connections = 2
-                                if TG_CONNECTIONS_COUNT < 10 and file_size > 100*1024*1024:
-                                    connections = 10
-                                elif TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
-                                    connections = 5
+                        try:
+                            if ffmpeg_av and ffmpeg_av.file_name:
+                                await ffmpeg_av.stream.wait()
+                                file_size_real = os.path.getsize(ffmpeg_av.file_name)
+                                STORAGE_SIZE += file_size - file_size_real
+                                file_size = file_size_real
+                                local_file = aiofiles.open(ffmpeg_av.file_name, mode='rb')
+                                upload_file = await local_file.__aenter__()
+                            # uploading piped ffmpeg file is slow anyway
+                            # TODO проверка на то что ffmpeg_av имееет file_name
+                            if (file_size > 20*1024*1024 and TG_CONNECTIONS_COUNT < TG_MAX_PARALLEL_CONNECTIONS) and \
+                                (isinstance(upload_file, av_source.URLav) or
+                                 isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader)):
+                                try:
+                                    connections = 2
+                                    if TG_CONNECTIONS_COUNT < 10 and file_size > 100*1024*1024:
+                                        connections = 10
+                                    elif TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
+                                        connections = 5
 
-                                TG_CONNECTIONS_COUNT += connections
-                                file = await fast_telethon.upload_file(client,
-                                                                       upload_file,
-                                                                       file_size,
-                                                                       file_name,
-                                                                       max_connection=connections)
-                            except:
-                                raise
-                            finally:
-                                TG_CONNECTIONS_COUNT -= connections
-                        else:
-                            file = await client.upload_file(upload_file,
-                                                            file_name=file_name,
-                                                            file_size=file_size,
-                                                            http_headers=http_headers)
-
-                        if ffmpeg_cancel_task is not None and not ffmpeg_cancel_task.cancelled():
-                            ffmpeg_cancel_task.cancel()
-
-                        if upload_file is not None:
-                            if inspect.iscoroutinefunction(upload_file.close):
-                                await upload_file.close()
+                                    TG_CONNECTIONS_COUNT += connections
+                                    file = await fast_telethon.upload_file(client,
+                                                                           upload_file,
+                                                                           file_size,
+                                                                           file_name,
+                                                                           max_connection=connections)
+                                finally:
+                                    TG_CONNECTIONS_COUNT -= connections
                             else:
-                                upload_file.close()
+                                file = await client.upload_file(upload_file,
+                                                                file_name=file_name,
+                                                                file_size=file_size,
+                                                                http_headers=http_headers)
+                        finally:
+                            if ffmpeg_av and ffmpeg_av.file_name:
+                                STORAGE_SIZE += file_size
+                                if isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader):
+                                    await local_file.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
+                                try:
+                                    os.remove(ffmpeg_av.file_name)
+                                except Exception as e:
+                                    log.exception(e)
+
+                            if ffmpeg_cancel_task is not None and not ffmpeg_cancel_task.cancelled():
+                                ffmpeg_cancel_task.cancel()
+
+                            if upload_file is not None:
+                                if inspect.iscoroutinefunction(upload_file.close):
+                                    await upload_file.close()
+                                else:
+                                    upload_file.close()
 
                         attributes = None
                         if cmd == 'a':
@@ -928,10 +980,11 @@ async def _on_message(message, log):
                                                           (entry['alt_title'] is not None) else entry['title']
                             attributes = DocumentAttributeAudio(duration, title=title, performer=performer)
                         elif ext == 'mp4':
+                            supports_streaming = False if ffmpeg_av is not None and ffmpeg_av.file_name is None else True
                             attributes = DocumentAttributeVideo(duration,
                                                                 width,
                                                                 height,
-                                                                supports_streaming=False if ffmpeg_av is not None else True)
+                                                                supports_streaming=supports_streaming)
                         else:
                             attributes = DocumentAttributeFilename(file_name)
                         force_document = False
@@ -1010,6 +1063,7 @@ available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c', 's'] + playlist_cm
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30
 TG_CONNECTIONS_COUNT = 0
+STORAGE_SIZE = int(os.getenv('STORAGE_SIZE')) * 1024 * 1024
 
 
 async def init_bot_enitty():
@@ -1026,6 +1080,7 @@ async def abort():
 
 
 if __name__ == '__main__':
+    print('Allowed storage size: ', STORAGE_SIZE)
     app = web.Application()
     app.add_routes([web.post('/bot', on_message)])
     client.start()

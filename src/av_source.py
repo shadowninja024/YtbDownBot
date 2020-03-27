@@ -76,14 +76,25 @@ class FFMpegAV(DumbReader):
 
     def __init__(self):
         self._buf = b''
+        self.file_name = None
 
     @staticmethod
-    async def create(vformat, aformat=None, audio_only=False, headers='', cut_time_range=None, ext=None, format_name=''):
+    async def create(vformat,
+                     aformat=None,
+                     audio_only=False,
+                     headers='',
+                     cut_time_range=None,
+                     ext=None,
+                     format_name='',
+                     file_name=None):
         if headers != '':
             headers = "\n".join(av_utils.dict_to_list(headers))
         ff = FFMpegAV()
         # _finput = ffmpeg.input(vformat['url'], **{"user-agent": user_agent, "loglevel": "error"})
         _finput = None
+
+        if file_name:
+            ff.file_name = "'" + file_name + "'"
 
         cut_time_fix_args = []
         cut_time_start = cut_time_end = None
@@ -121,30 +132,48 @@ class FFMpegAV(DumbReader):
                     acodec = 'mp3'
 
                 if acodec != None:
-                    _fstream = _finput.output('pipe:',
-                                              format=acodec,
-                                              acodec='copy',
-                                              **{'vn': None})
-                else:
+                    if not ff.file_name:
+                        _fstream = _finput.output('pipe:',
+                                                  format=acodec,
+                                                  acodec='copy',
+                                                  **{'vn': None})
+                    else:
+                        _fstream = _finput.output(ff.file_name,
+                                                  format=acodec,
+                                                  acodec='copy',
+                                                  **{'vn': None})
+            if not _fstream:
+                if not ff.file_name:
                     _fstream = _finput.output('pipe:',
                                               format='mp3',
                                               acodec='mp3',
+                                              ab='192k',
                                               **{'vn': None})
-            else:
-                _fstream = _finput.output('pipe:',
-                                          format='mp3',
-                                          acodec='mp3',
-                                          **{'vn': None})
+                else:
+                    _fstream = _finput.output(ff.file_name,
+                                              format='mp3',
+                                              acodec='mp3',
+                                              ab='192k',
+                                              **{'vn': None})
+
         else:
             if format_name != '':
                 _format = format_name
             else:
                 _format = ext if ext else 'mp4'
-            _fstream = _finput.output('pipe:',
-                                      format=_format,
-                                      vcodec='copy',
-                                      acodec='mp3',
-                                      movflags='frag_keyframe')
+
+            if not ff.file_name:
+                _fstream = _finput.output('pipe:',
+                                          format=_format,
+                                          vcodec='copy',
+                                          acodec='mp3',
+                                          ab='192k',
+                                          movflags='frag_keyframe')
+            else:
+                _fstream = _finput.output(ff.file_name,
+                                          format=_format,
+                                          vcodec='copy',
+                                          acodec='copy')
 
         cut_time_duration_arg = []
         if cut_time_end is not None:
@@ -176,9 +205,13 @@ class FFMpegAV(DumbReader):
                 args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
         args = args[:1] + ["-loglevel",  "error", "-icy", "0"] + args[1:]
-        proc = await asyncio.create_subprocess_exec('ffmpeg',
-                                                    *args[1:],
-                                                    stdout=asyncio.subprocess.PIPE)
+        if not ff.file_name:
+            proc = await asyncio.create_subprocess_exec('ffmpeg',
+                                                        *args[1:],
+                                                        stdout=asyncio.subprocess.PIPE)
+        else:
+            proc = await asyncio.create_subprocess_exec('ffmpeg',
+                                                        *args[1:])
         ff.stream = proc
 
         return ff

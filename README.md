@@ -13,12 +13,10 @@ Set the following enviroment variables:
   1. Bot token(from Bot Father):
 `BOT_API_TOKEN`
 
-  2. Chat id between bot and agent (regular client with phone number 
-for bypass limit in 50MB):
+  2. Chat id between bot and agent (client id with phone number):
 `BOT_AGENT_CHAT_ID`
 
-  3. Chat id between agent(regular client with phone number 
-for bypass limit in 50MB) and bot:
+  3. Chat id between agent and bot (bot name):
 `CHAT_WITH_BOT_ID`
 
   4. Api id (https://core.telegram.org/api/obtaining_api_id):

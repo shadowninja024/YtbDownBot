@@ -724,16 +724,10 @@ async def _on_message(message, log):
                                         chosen_format['url'] = normalize_url_path(direct_url)
 
                                     if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
-                                        file_name = None
-                                        if not cut_time_start and STORAGE_SIZE > file_size > 0:
-                                            STORAGE_SIZE -= file_size
-                                            file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry[
-                                                'title'] + '.' + 'mp3'
                                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                     audio_only=True,
                                                                                     headers=http_headers,
-                                                                                    cut_time_range=_cut_time,
-                                                                                    file_name=file_name)
+                                                                                    cut_time_range=_cut_time)
                                     break
 
                         else:
@@ -779,16 +773,10 @@ async def _on_message(message, log):
                                 if 'invidio.us' in direct_url:
                                     chosen_format['url'] = normalize_url_path(direct_url)
                                 if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
-                                    file_name = None
-                                    if not cut_time_start and STORAGE_SIZE > file_size > 0:
-                                        STORAGE_SIZE -= file_size
-                                        file_name = str(chat_id) + ':' + str(msg_id) + ':' + \
-                                                    entry['title'] + '.' + 'mp3'
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 audio_only=True,
                                                                                 headers=http_headers,
-                                                                                cut_time_range=_cut_time,
-                                                                                file_name=file_name)
+                                                                                cut_time_range=_cut_time)
 
                         if chosen_format is None and ffmpeg_av is None:
                             if len(preferred_formats) - 1 == ip:

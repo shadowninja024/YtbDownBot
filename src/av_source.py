@@ -193,10 +193,10 @@ class FFMpegAV(DumbReader):
             if cut_time_start is not None:
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
                        args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + \
-                       ['-fs', '1520435200', '-shortest'] + cut_time_fix_args + [args[-1]]
+                       ['-fs', '1520435200'] + cut_time_fix_args + [args[-1]]
             else:
                 args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
-                    '-fs', '1520435200', '-shortest'] + [args[-1]]
+                    '-fs', '1520435200'] + [args[-1]]
 
         else:
             args = _fstream.compile()
@@ -204,7 +204,7 @@ class FFMpegAV(DumbReader):
             if cut_time_start is not None and not audio_only:
                 args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
-        args = args[:1] + ["-loglevel",  "error", "-icy", "0"] + args[1:]
+        args = args[:1] + ["-loglevel",  "error", "-icy", "0", "-err_detect", "ignore_err"] + args[1:]
         if not ff.file_name:
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],

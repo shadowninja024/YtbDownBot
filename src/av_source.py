@@ -94,7 +94,7 @@ class FFMpegAV(DumbReader):
         _finput = None
 
         if file_name:
-            ff.file_name = "'" + file_name + "'"
+            ff.file_name = "'" + file_name.replace('/', '').replace('\'', '') + "'"
 
         cut_time_fix_args = []
         cut_time_start = cut_time_end = None

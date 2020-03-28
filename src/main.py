@@ -396,6 +396,9 @@ async def _on_message(message, log):
             user = await users.User.init(chat_id)
             await send_settings(user, chat_id)
             return
+        elif cmd == 'donate':
+            await _bot.send_message(chat_id, os.getenv('DONATE_INFO', ''), parse_mode='Markdown')
+            return
         elif cmd in playlist_cmds:
             urls_count = len(urls)
             if urls_count != 1:
@@ -1046,7 +1049,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
+available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30

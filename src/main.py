@@ -740,7 +740,7 @@ async def _on_message(message, log):
                                 recover_playlist_index = ie
                                 break
                             if 'm3u8' in entry['protocol']:
-                                if cut_time_start is None and entry.get('is_live', False) is False:
+                                if cut_time_start is None and entry.get('is_live', False) is False and cmd != 'a':
                                     file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
                                 else:
                                     # we don't know real size

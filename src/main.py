@@ -947,6 +947,9 @@ async def _on_message(message, log):
                         finally:
                             if ffmpeg_av and ffmpeg_av.file_name:
                                 STORAGE_SIZE += file_size
+                                if STORAGE_SIZE > MAX_STORAGE_SIZE:
+                                    log.warning('logic error, reclaimed storage size bigger then initial')
+                                    STORAGE_SIZE = MAX_STORAGE_SIZE
                                 if isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader):
                                     await local_file.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
                                 try:
@@ -1054,7 +1057,8 @@ available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's'] + p
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30
 TG_CONNECTIONS_COUNT = 0
-STORAGE_SIZE = int(os.getenv('STORAGE_SIZE')) * 1024 * 1024
+MAX_STORAGE_SIZE = int(os.getenv('STORAGE_SIZE')) * 1024 * 1024
+STORAGE_SIZE = MAX_STORAGE_SIZE
 
 
 async def init_bot_enitty():

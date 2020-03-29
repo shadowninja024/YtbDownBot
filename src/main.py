@@ -673,7 +673,7 @@ async def _on_message(message, log):
                                         else:
                                             msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
                                     # we can't precisely predict media size so make it large for prevent cutting
-                                    file_size = vsize + msize + 5 * 1024 * 1024
+                                    file_size = vsize + msize + 10 * 1024 * 1024
                                     if file_size < TG_MAX_FILE_SIZE or cut_time_start is not None:
                                         file_name = None
                                         if not cut_time_start and STORAGE_SIZE > file_size > 0:
@@ -700,7 +700,7 @@ async def _on_message(message, log):
                                                 msize = mformat['filesize']
                                             else:
                                                 msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
-                                            msize += 5 * 1024 * 1024
+                                            msize += 10 * 1024 * 1024
                                             if (msize + file_size) > TG_MAX_FILE_SIZE:
                                                 mformat = None
                                             else:
@@ -802,7 +802,7 @@ async def _on_message(message, log):
                         if cmd == 'a' and file_size != 0 and (ffmpeg_av is None or ffmpeg_av.file_name is None):
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
-                            file_size += 5242880 # 5MB
+                            file_size += 10 * 1024 * 1024 # 10MB
 
                         log.debug('uploading file')
 

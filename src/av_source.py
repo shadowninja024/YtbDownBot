@@ -147,13 +147,11 @@ class FFMpegAV(DumbReader):
                     _fstream = _finput.output('pipe:',
                                               format='mp3',
                                               acodec='mp3',
-                                              ab='192k',
                                               **{'vn': None})
                 else:
                     _fstream = _finput.output(ff.file_name,
                                               format='mp3',
                                               acodec='mp3',
-                                              ab='192k',
                                               **{'vn': None})
 
         else:
@@ -167,13 +165,17 @@ class FFMpegAV(DumbReader):
                                           format=_format,
                                           vcodec='copy',
                                           acodec='mp3',
-                                          ab='192k',
                                           movflags='frag_keyframe')
             else:
+                audio_ext = aformat.get('ext', '')
+                if _format == 'mp4' and (audio_ext == 'mp3' or audio_ext == 'm4a'):
+                    acodec = 'copy'
+                else:
+                    acodec = 'mp3'
                 _fstream = _finput.output(ff.file_name,
                                           format=_format,
                                           vcodec='copy',
-                                          acodec='copy')
+                                          acodec=acodec)
 
         cut_time_duration_arg = []
         if cut_time_end is not None:

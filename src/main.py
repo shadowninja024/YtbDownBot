@@ -1,9 +1,10 @@
 #!/bin/python3
 
 import sys, os
-from telethon import TelegramClient, Button, functions
+from telethon import TelegramClient
 from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio, DocumentAttributeFilename
 from telethon.sessions import StringSession
+from telethon.errors import AuthKeyDuplicatedError
 import traceback
 import asyncio
 import logging
@@ -944,6 +945,10 @@ async def _on_message(message, log):
                                                                 file_name=file_name,
                                                                 file_size=file_size,
                                                                 http_headers=http_headers)
+                        except AuthKeyDuplicatedError as e:
+                            await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                            log.fatal(e)
+                            os.abort()
                         finally:
                             if ffmpeg_av and ffmpeg_av.file_name:
                                 STORAGE_SIZE += file_size
@@ -1010,12 +1015,20 @@ async def _on_message(message, log):
                                                        force_document=force_document,
                                                        supports_streaming=False if ffmpeg_av is not None else True,
                                                        thumb=_thumb)
+                            except AuthKeyDuplicatedError as e:
+                                await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                                log.fatal(e)
+                                os.abort()
                             except Exception as e:
                                 log.exception(e)
                                 await asyncio.sleep(1)
                                 continue
 
                             break
+                    except AuthKeyDuplicatedError as e:
+                        await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                        log.fatal(e)
+                        os.abort()
                     except Exception as e:
                         if len(preferred_formats) - 1 <= ip:
                             # raise exception for notify user about error

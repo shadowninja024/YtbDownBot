@@ -25,6 +25,7 @@ import mimetypes
 from datetime import time, timedelta
 from aiogram import Bot
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from requests.exceptions import HTTPError as CloudantHTTPError
 from urllib.error import HTTPError
 from urllib.parse import urlparse, urlunparse
 import signal
@@ -87,12 +88,12 @@ async def on_callback(callback):
     for _ in range(15):
         try:
             await _on_callback(from_id, msg_id, data, user, log)
-        except HTTPError as e:
+        except CloudantHTTPError as e:
             if e.response.status_code == 409:
                 log.warning('document update conflict, trying sync with db...')
                 try:
                     await user.sync_with_db()
-                except HTTPError as e:
+                except CloudantHTTPError as e:
                     if e.response.status_code == 404:
                         user = await users.User.init(from_id, force_create=True)
                 continue

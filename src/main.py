@@ -164,12 +164,21 @@ async def on_message(request):
                     traceback.print_exc()
             return web.Response(status=200)
 
-        asyncio.get_event_loop().create_task(_on_message_task(message))
+        msg_task = asyncio.get_event_loop().create_task(_on_message_task(message))
+        asyncio.get_event_loop().create_task(task_timeout_cancel(msg_task, timemout=5500))
     except Exception as e:
         print(e)
         traceback.print_exc()
 
     return web.Response(status=200)
+
+
+async def task_timeout_cancel(task, timemout=5):
+    try:
+        await asyncio.wait_for(task, timeout=timemout)
+    except asyncio.TimeoutError:
+        task.cancel()
+
 
 
 # share uploaded by client api file to user

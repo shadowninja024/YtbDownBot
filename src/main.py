@@ -937,10 +937,8 @@ async def _on_message(message, log):
                                  isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader)):
                                 try:
                                     connections = 2
-                                    if TG_CONNECTIONS_COUNT < 10 and file_size > 100*1024*1024:
-                                        connections = 10
-                                    elif TG_CONNECTIONS_COUNT < 20 and file_size > 50*1024*1024:
-                                        connections = 5
+                                    if TG_CONNECTIONS_COUNT < 20 and file_size > 100*1024*1024:
+                                        connections = 4
 
                                     TG_CONNECTIONS_COUNT += connections
                                     file = await fast_telethon.upload_file(client,

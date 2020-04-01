@@ -57,7 +57,11 @@ async def _av_info(url, http_headers=''):
     # mi_proc = subprocess.Popen(['mediainfo', mediainf_args, '2>', '/dev/null', url],
     #                            stdout=subprocess.PIPE,
     #                            stderr=subprocess.STDOUT)
-    out = await asyncio.wait_for(ff_proc.stdout.read(), timeout=60)
+    try:
+        out = await asyncio.wait_for(ff_proc.stdout.read(), timeout=120)
+    except asyncio.TimeoutError as e:
+        print(e)
+        return {}
     info = json.loads(out)
     if 'format' in info and 'duration' in info['format']:
         info['format']['duration'] = int(float(info['format']['duration']))

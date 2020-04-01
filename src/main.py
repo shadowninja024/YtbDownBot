@@ -854,7 +854,7 @@ async def _on_message(message, log):
 
                         if 'mp4 - unknown' in chosen_format.get('format', '') and chosen_format.get('ext', '') != 'mp4':
                             chosen_format['ext'] = 'mp4'
-                        elif 'unknown' in chosen_format['ext']:
+                        elif 'unknown' in chosen_format['ext'] or 'php' in chosen_format['ext']:
                             mime, cd_file_name = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
                             if cd_file_name:
                                 cd_splited_file_name, cd_ext = os.path.splitext(cd_file_name)

@@ -855,25 +855,30 @@ async def _on_message(message, log):
                         if 'mp4 - unknown' in chosen_format.get('format', '') and chosen_format.get('ext', '') != 'mp4':
                             chosen_format['ext'] = 'mp4'
                         elif 'unknown' in chosen_format['ext']:
-                            mime = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
-                            ext = mimetypes.guess_extension(mime)
-                            if ext is None or ext == '':
-                                if format_name is None:
-                                    if len(preferred_formats) - 1 == ip:
-                                        await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
-                                                                reply_to_message_id=msg_id)
-                                    # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                                    continue
+                            mime, cd_file_name = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
+                            if cd_file_name:
+                                cd_splited_file_name, cd_ext = os.path.splitext(cd_file_name)
+                                if len(cd_ext) > 0:
+                                    chosen_format['ext'] = cd_ext[1:]
                                 else:
-                                    chosen_format['ext'] = format_name
+                                    chosen_format['ext'] = ''
+                                if len(cd_splited_file_name) > 0:
+                                    chosen_format['title'] = cd_splited_file_name
                             else:
-                                ext = ext[1:]
-                                media_type = mime.split('/')[0]
-                                if media_type != 'audio' and media_type != 'video' and format_name != '':
-                                    if format_name == 'mov':
-                                        format_name = 'mp4'
-                                    chosen_format['ext'] = format_name
+                                ext = mimetypes.guess_extension(mime)
+                                if ext is None or ext == '':
+                                    if format_name is None or format_name == '':
+                                        if len(preferred_formats) - 1 == ip:
+                                            await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
+                                                                    reply_to_message_id=msg_id)
+                                        # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
+                                        continue
+                                    else:
+                                        if format_name == 'mov':
+                                            format_name = 'mp4'
+                                        chosen_format['ext'] = format_name
                                 else:
+                                    ext = ext[1:]
                                     chosen_format['ext'] = ext
 
                         # in case of video is live we don't know real duration

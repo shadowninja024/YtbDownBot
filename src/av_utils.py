@@ -127,20 +127,17 @@ async def _media_size(url, session=None, http_headers=None):
 
 async def media_mime(url, http_headers=None):
     async with ClientSession() as session:
-        async with session.head(url, headers=http_headers, allow_redirects=True) as resp:
-            media_type = ''
-            content_type = resp.content_type
-            if content_type:
-                media_type = content_type.split('/')[0]
-            if media_type != 'audio' and media_type != 'video':
-                async with session.get(url, headers=http_headers) as get_resp:
-                    _content_type = get_resp.headers.getall(hdrs.CONTENT_TYPE)
-                    for ct in _content_type:
-                        _media_type = ct.split('/')[0]
-                        if _media_type == 'audio' or _media_type == 'video':
-                            return ct
-
-            return content_type if content_type is not None else ''
+        async with session.get(url, headers=http_headers) as get_resp:
+            if get_resp.content_disposition:
+                return None, get_resp.content_disposition.filename
+            _content_type = get_resp.headers.getall(hdrs.CONTENT_TYPE)
+            for ct in _content_type:
+                _media_type = ct.split('/')[0]
+                if _media_type == 'audio' or _media_type == 'video':
+                    return ct, None
+            else:
+                if len(_content_type) > 0:
+                    return _content_type[0], None
 
 
 def m3u8_parse_url(url):

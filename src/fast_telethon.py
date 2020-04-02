@@ -259,6 +259,7 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
             dat = b'\0' * (part_size - len(data))
             data += dat
             uploader.senders[0].request.file_total_parts = part_index
+            part_count = part_index
         if not is_large:
             hash_md5.update(data)
         if len(buffer) == 0 and len(data) == part_size:

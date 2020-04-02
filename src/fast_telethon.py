@@ -252,7 +252,10 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
     part_index = 0
     async for data in stream_file(response, chunk_size=part_size):
         part_index += 1
-        if len(data) != part_size:
+        if data == b'':
+            part_count = part_index - 1
+            break
+        if len(data) != part_size and part_index != part_count:
             dat = b'\0' * (part_size - len(data))
             data += dat
             uploader.senders[0].request.file_total_parts = part_index
@@ -271,7 +274,6 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
         else:
             buffer.extend(data)
 
-    part_count = part_index
     if len(buffer) > 0:
         await uploader.upload(bytes(buffer))
     await uploader.finish_upload()

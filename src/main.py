@@ -842,6 +842,9 @@ async def _on_message(message, log):
                                     cmd = 'a'
                                 duration = int(float(info['format'].get('duration', 0)))
                                 format_name = info['format'].get('format_name', '').split(',')[0]
+                                _av_ext = chosen_format.get('ext', '')
+                                if _av_ext == 'mp3' or _av_ext == 'm4a' or _av_ext == 'ogg' or format_name == 'mp3' or format_name == 'ogg':
+                                    cmd = 'a'
                             except KeyError:
                                 width = 0
                                 height = 0

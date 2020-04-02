@@ -159,15 +159,20 @@ class FFMpegAV(DumbReader):
                 _format = format_name
             else:
                 _format = ext if ext else 'mp4'
+            audio_ext = aformat.get('ext', '') if aformat else ''
+            if _format == 'mp4' and (audio_ext == 'mp3' or audio_ext == 'm4a'):
+                acodec = 'copy'
+            else:
+                acodec = 'mp3'
 
             if not ff.file_name:
                 _fstream = _finput.output('pipe:',
                                           format=_format,
                                           vcodec='copy',
-                                          acodec='mp3',
+                                          acodec=acodec,
                                           movflags='frag_keyframe')
             else:
-                audio_ext = aformat.get('ext', '')
+                audio_ext = aformat.get('ext', '') if aformat else ''
                 if _format == 'mp4' and (audio_ext == 'mp3' or audio_ext == 'm4a'):
                     acodec = 'copy'
                 else:
@@ -206,7 +211,7 @@ class FFMpegAV(DumbReader):
             if cut_time_start is not None and not audio_only:
                 args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
-        args = args[:1] + ["-loglevel",  "error", "-icy", "0", "-err_detect", "ignore_err", "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"] + args[1:]
+        args = args[:1] + ["-loglevel",  "error", "-icy", "0", "-err_detect", "ignore_err", "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "10"] + args[1:]
         if not ff.file_name:
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:],

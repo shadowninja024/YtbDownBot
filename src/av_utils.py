@@ -132,7 +132,7 @@ async def _media_size(url, session=None, http_headers=None):
 async def media_mime(url, http_headers=None):
     async with ClientSession() as session:
         async with session.get(url, headers=http_headers) as get_resp:
-            if get_resp.content_disposition:
+            if get_resp.content_disposition and get_resp.content_disposition.filename:
                 return None, get_resp.content_disposition.filename
             _content_type = get_resp.headers.getall(hdrs.CONTENT_TYPE)
             for ct in _content_type:

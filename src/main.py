@@ -628,6 +628,14 @@ async def _on_message(message, log):
                                               direct_url,
                                               http_headers=http_headers)
                         return
+                    if cmd == 't':
+                        thumb_url = entry.get('thumbnail')
+                        if thumb_url:
+                            await _bot.send_photo(chat_id, thumb_url)
+                        else:
+                            await _bot.send_message(chat_id, 'Media don\'t contain thumbnail')
+
+                        return
 
                     _cut_time = (cut_time_start, cut_time_end) if cut_time_start else None
                     try:
@@ -1081,7 +1089,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's'] + playlist_cmds
+available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30

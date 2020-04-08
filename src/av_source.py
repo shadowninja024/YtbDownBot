@@ -159,8 +159,9 @@ class FFMpegAV(DumbReader):
                 _format = format_name
             else:
                 _format = ext if ext else 'mp4'
+            ff.format = _format
             audio_ext = aformat.get('ext', '') if aformat else ''
-            if _format == 'mp4' and (audio_ext == 'mp3' or audio_ext == 'm4a'):
+            if _format == 'mp4' and (audio_ext == '' or (audio_ext == 'mp3' or audio_ext == 'm4a')):
                 acodec = 'copy'
             else:
                 acodec = 'mp3'
@@ -172,21 +173,17 @@ class FFMpegAV(DumbReader):
                                           acodec=acodec,
                                           movflags='frag_keyframe')
             else:
-                audio_ext = aformat.get('ext', '') if aformat else ''
-                if _format == 'mp4' and (audio_ext == 'mp3' or audio_ext == 'm4a'):
-                    acodec = 'copy'
-                else:
-                    acodec = 'mp3'
                 _fstream = _finput.output(ff.file_name,
                                           format=_format,
                                           vcodec='copy',
-                                          acodec=acodec)
+                                          acodec=acodec,
+                                          movflags='faststart')
 
         cut_time_duration_arg = []
         if cut_time_end is not None:
             cut_time_duration_arg += ['-t', cut_time_end]
 
-        args = []
+        args = _fstream.compile()
         if aformat:
             # args = _fstream.global_args('headers',
             #                             "\n".join(headers),
@@ -196,7 +193,6 @@ class FFMpegAV(DumbReader):
             #                             '0:v',
             #                             '-map',
             #                             '1:a').compile()
-            args = _fstream.compile()
             if cut_time_start is not None:
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
                        args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + \
@@ -206,10 +202,9 @@ class FFMpegAV(DumbReader):
                     '-fs', '1520435200'] + [args[-1]]
 
         else:
-            args = _fstream.compile()
             args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
-            if cut_time_start is not None and not audio_only:
-                args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
+            # if cut_time_start is not None and not audio_only:
+            #     args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
         args = args[:1] + ["-loglevel",  "error", "-icy", "0", "-err_detect", "ignore_err", "-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "10"] + args[1:]
         if not ff.file_name:

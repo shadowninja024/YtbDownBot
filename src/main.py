@@ -825,7 +825,7 @@ async def _on_message(message, log):
 
                         log.debug('uploading file')
 
-                        width = height = duration = None
+                        width = height = duration = video_codec = audio_codec = None
                         format_name = ''
                         if cmd == 'a':
                             if ('duration' not in entry and 'duration' not in chosen_format):
@@ -843,10 +843,14 @@ async def _on_message(message, log):
                             info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
                             try:
                                 streams = info['streams']
-                                if len(streams) > 0:
-                                    width = streams[0]['width']
-                                    height = streams[0]['height']
-                                else:
+                                for s in streams:
+                                    if 'width' in s:
+                                        width = s['width']
+                                        height = s['height']
+                                        video_codec = s['codec_name']
+                                    else:
+                                        audio_codec = s['codec_name']
+                                if video_codec is None:
                                     cmd = 'a'
                                 duration = int(float(info['format'].get('duration', 0)))
                                 format_name = info['format'].get('format_name', '').split(',')[0]
@@ -922,6 +926,14 @@ async def _on_message(message, log):
                                                                         cut_time_range=_cut_time,
                                                                         ext=ext,
                                                                         format_name=format_name if ext != 'mp4' and format_name != '' else '')
+                        if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and video_codec == 'h264' and \
+                                (audio_codec == 'mp3' or audio_codec == 'aac'):
+                            file_name = entry.get('title', 'default') + '.mp4'
+                            if STORAGE_SIZE > file_size:
+                                STORAGE_SIZE -= file_size
+                                ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
+                                                                            headers=http_headers,
+                                                                            file_name=file_name)
                         upload_file = ffmpeg_av if ffmpeg_av is not None else await av_source.URLav.create(
                             chosen_format['url'],
                             http_headers)
@@ -1089,7 +1101,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't'] + playlist_cmds
+available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30

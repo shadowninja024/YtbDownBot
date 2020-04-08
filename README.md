@@ -27,5 +27,8 @@ for bypass limit in 50MB) and bot:
 `API_HASH`
   6. Telegram client session string for telethon StringSession:
   `CLIENT_SESSION`
+  7. IBM Cloudant credentials: 
+  `CLOUDANT_USERNAME`, `CLOUDANT_PASSWORD`, `CLOUDANT_URL`
+  (can be easily replaced with CouchDB: read https://python-cloudant.readthedocs.io/en/latest/getting_started.html)
 
 Note: for deploying webhook branch you must set also webhook url via calling `https://api.telegram.org/bot<bot-token>/setWebhook?url=<webhook-url>` (`webhook-url` path is `bot_domanin+/bot` like `mybot.com/bot`) Use master branch if you want to use polling instead.

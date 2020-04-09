@@ -159,7 +159,8 @@ class FFMpegAV(DumbReader):
                 _format = format_name
             else:
                 _format = ext if ext else 'mp4'
-            ff.format = _format
+            if _format == 'mp4':
+                ff.format = _format
             audio_ext = aformat.get('ext', '') if aformat else ''
             if _format == 'mp4' and (audio_ext == '' or (audio_ext == 'mp3' or audio_ext == 'm4a')):
                 acodec = 'copy'

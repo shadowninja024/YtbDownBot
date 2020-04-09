@@ -7,8 +7,7 @@ import av_source
 import av_utils
 from datetime import timedelta
 
-async def get_thumbnail(entry):
-    thumb_url = entry.get('thumbnail')
+async def get_thumbnail(thumb_url, entry):
     img_data = None
     if thumb_url is None or thumb_url == 'none':
         img_data = await get_image_from_video(entry['url'], entry['http_headers'])

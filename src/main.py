@@ -471,6 +471,14 @@ async def _on_message(message, log):
             await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/s 23:14 youtube.com`',
                                     reply_to_message_id=msg_id,
                                     parse_mode='Markdown')
+        elif cmd == 't':
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/t youtube.com`',
+                                    reply_to_message_id=msg_id,
+                                    parse_mode='Markdown')
+        elif cmd == 'm':
+            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/m nonyoutube.com`',
+                                    reply_to_message_id=msg_id,
+                                    parse_mode='Markdown')
         else:
             await _bot.send_message(chat_id, 'Please send me link to the video', reply_to_message_id=msg_id)
             # await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
@@ -929,7 +937,7 @@ async def _on_message(message, log):
                         if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and video_codec == 'h264' and \
                                 (audio_codec == 'mp3' or audio_codec == 'aac'):
                             file_name = entry.get('title', 'default') + '.mp4'
-                            if STORAGE_SIZE > file_size:
+                            if STORAGE_SIZE > file_size > 0:
                                 STORAGE_SIZE -= file_size
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                             headers=http_headers,
@@ -939,7 +947,10 @@ async def _on_message(message, log):
                             http_headers)
 
                         ext = (chosen_format['ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
-                        file_name = entry['title'] + '.' + ext
+                        file_name_no_ext = entry['title']
+                        if not file_name_no_ext[-1].isalnum():
+                            file_name_no_ext = file_name_no_ext[:-1] + '_'
+                        file_name = file_name_no_ext + '.' + ext
                         if file_size == 0:
                             log.warning('file size is 0')
 
@@ -1037,7 +1048,7 @@ async def _on_message(message, log):
                         recover_playlist_index = None
                         _thumb = None
                         try:
-                            _thumb = await thumb.get_thumbnail(entry)
+                            _thumb = await thumb.get_thumbnail(entry.get('thumbnail'), chosen_format)
                         except Exception as e:
                             log.warning('failed get thumbnail: ' + str(e))
 

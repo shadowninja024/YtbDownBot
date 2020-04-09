@@ -181,7 +181,7 @@ class FFMpegAV(DumbReader):
 
         cut_time_duration_arg = []
         if cut_time_end is not None:
-            cut_time_duration_arg += ['-t', cut_time_end]
+            cut_time_duration_arg += ['-t', cut_time_end, "-shortest"]
 
         args = _fstream.compile()
         if aformat:

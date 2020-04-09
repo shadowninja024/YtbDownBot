@@ -43,7 +43,7 @@ async def _av_info(url, http_headers=''):
                                                    '-v',
                                                    'error',
                                                    '-show_entries',
-                                                   'stream=width,height,codec_name',
+                                                   'stream=width,height,codec_name,codec_type',
                                                    '-show_entries',
                                                    'format=duration,format_name',
                                                    '-of',

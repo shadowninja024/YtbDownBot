@@ -852,11 +852,11 @@ async def _on_message(message, log):
                             try:
                                 streams = info['streams']
                                 for s in streams:
-                                    if 'width' in s:
+                                    if s.get('codec_type') == 'video':
                                         width = s['width']
                                         height = s['height']
                                         video_codec = s['codec_name']
-                                    else:
+                                    elif s.get('codec_type') == 'audio':
                                         audio_codec = s['codec_name']
                                 if video_codec is None:
                                     cmd = 'a'

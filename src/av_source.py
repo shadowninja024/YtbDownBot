@@ -1,7 +1,7 @@
 import typing
 import ffmpeg
 import asyncio
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 import cut_time
 import av_utils
 from datetime import datetime
@@ -275,7 +275,7 @@ class URLav(DumbReader):
     async def _create(url, headers=None):
         u = URLav()
         timeout = ClientTimeout(total=3600)
-        u.session = await ClientSession(timeout=timeout).__aenter__()
+        u.session = await ClientSession(timeout=timeout, connector=TCPConnector(verify_ssl=False)).__aenter__()
         u.request = await u.session.get(url, headers=headers)
         # u.request = await asks.get(url, headers=headers, stream=True, max_redirects=5)
         # u.body = u.request.body(timeout=14400)

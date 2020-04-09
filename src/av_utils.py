@@ -1,7 +1,7 @@
 import m3u8
 import asyncio
 import json
-from aiohttp import ClientSession, hdrs
+from aiohttp import ClientSession, hdrs, TCPConnector
 from http.client import responses
 from urllib.parse import urlparse
 
@@ -96,7 +96,7 @@ async def media_size(url, session=None, http_headers=None):
 async def _media_size(url, session=None, http_headers=None):
     _session = None
     if session is None:
-        _session = await ClientSession().__aenter__()
+        _session = await ClientSession(connector=TCPConnector(verify_ssl=False)).__aenter__()
     else:
         _session = session
     content_length = 0
@@ -128,7 +128,7 @@ async def _media_size(url, session=None, http_headers=None):
 
 
 async def media_mime(url, http_headers=None):
-    async with ClientSession() as session:
+    async with ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
         async with session.get(url, headers=http_headers) as get_resp:
             if get_resp.content_disposition and get_resp.content_disposition.filename:
                 return None, get_resp.content_disposition.filename
@@ -153,7 +153,7 @@ def m3u8_parse_url(url):
 async def m3u8_video_size(url, http_headers=None):
     m3u8_data = None
     m3u8_obj = None
-    async with ClientSession() as session:
+    async with ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
         async with session.get(url, headers=http_headers) as resp:
             m3u8_data = await resp.read()
             m3u8_obj = m3u8.loads(m3u8_data.decode())

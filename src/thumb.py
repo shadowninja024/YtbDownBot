@@ -1,5 +1,5 @@
 
-import aiohttp
+from aiohttp import ClientSession, TCPConnector
 import io
 from PIL import Image
 from math import floor
@@ -12,7 +12,7 @@ async def get_thumbnail(thumb_url, entry):
     if thumb_url is None or thumb_url == 'none':
         img_data = await get_image_from_video(entry['url'], entry['http_headers'])
     else:
-        async with aiohttp.ClientSession() as session:
+        async with ClientSession(connector=TCPConnector(verify_ssl=False)) as session:
             async with session.get(thumb_url) as resp:
                 if resp.status != 200:
                     return None

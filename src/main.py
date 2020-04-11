@@ -933,6 +933,7 @@ async def _on_message(message, log):
                                                                         headers=http_headers,
                                                                         cut_time_range=_cut_time,
                                                                         ext=ext,
+                                                                        audio_only=True if cmd == 'a' else False,
                                                                         format_name=format_name if ext != 'mp4' and format_name != '' else '')
                         if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and video_codec == 'h264' and \
                                 (audio_codec == 'mp3' or audio_codec == 'aac'):

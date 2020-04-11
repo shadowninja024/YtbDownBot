@@ -927,7 +927,7 @@ async def _on_message(message, log):
                                 duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(
                                     cut_time_start)
 
-                        if (cut_time_start is not None or cmd == 'a') and ffmpeg_av is None:
+                        if (cut_time_start is not None or (cmd == 'a' and chosen_format.get('ext') != 'mp3')) and ffmpeg_av is None:
                             ext = chosen_format.get('ext')
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,

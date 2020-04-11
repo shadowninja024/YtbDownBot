@@ -46,6 +46,8 @@ async def _av_info(url, http_headers=''):
                                                    'stream=width,height,codec_name,codec_type',
                                                    '-show_entries',
                                                    'format=duration,format_name',
+                                                   '-show_entries',
+                                                   'format_tags=title,artist',
                                                    '-of',
                                                    'json',
                                                    '-headers',

@@ -834,6 +834,7 @@ async def _on_message(message, log):
                         log.debug('uploading file')
 
                         width = height = duration = video_codec = audio_codec = None
+                        title = performer = None
                         format_name = ''
                         if cmd == 'a':
                             if ('duration' not in entry and 'duration' not in chosen_format):
@@ -860,8 +861,13 @@ async def _on_message(message, log):
                                         audio_codec = s['codec_name']
                                 if video_codec is None:
                                     cmd = 'a'
-                                duration = int(float(info['format'].get('duration', 0)))
-                                format_name = info['format'].get('format_name', '').split(',')[0]
+                                _av_format = info['format']
+                                duration = int(float(_av_format.get('duration', 0)))
+                                format_name = _av_format.get('format_name', '').split(',')[0]
+                                av_tags = _av_format.get('tags')
+                                if av_tags is not None and len(av_tags.keys()) > 0:
+                                    title = av_tags.get('title')
+                                    performer = av_tags.get('artist')
                                 _av_ext = chosen_format.get('ext', '')
                                 if _av_ext == 'mp3' or _av_ext == 'm4a' or _av_ext == 'ogg' or format_name == 'mp3' or format_name == 'ogg':
                                     cmd = 'a'
@@ -1021,10 +1027,12 @@ async def _on_message(message, log):
 
                         attributes = None
                         if cmd == 'a':
-                            performer = entry['artist'] if ('artist' in entry) and \
-                                                           (entry['artist'] is not None) else None
-                            title = entry['alt_title'] if ('alt_title' in entry) and \
-                                                          (entry['alt_title'] is not None) else entry['title']
+                            if performer is None:
+                                performer = entry['artist'] if ('artist' in entry) and \
+                                                               (entry['artist'] is not None) else None
+                            if title is None:
+                                title = entry['alt_title'] if ('alt_title' in entry) and \
+                                                              (entry['alt_title'] is not None) else entry['title']
                             attributes = DocumentAttributeAudio(duration, title=title, performer=performer)
                         elif ext == 'mp4':
                             supports_streaming = False if ffmpeg_av is not None and ffmpeg_av.file_name is None else True

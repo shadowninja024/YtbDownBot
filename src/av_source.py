@@ -215,6 +215,17 @@ class FFMpegAV(DumbReader):
         else:
             proc = await asyncio.create_subprocess_exec('ffmpeg',
                                                         *args[1:])
+        if headers != '':
+            await asyncio.sleep(1)
+            if proc.returncode is not None and proc.returncode != 0:
+                return await FFMpegAV.create(vformat,
+                                             aformat=aformat,
+                                             audio_only=audio_only,
+                                             headers='',
+                                             cut_time_range=cut_time_range,
+                                             ext=ext,
+                                             format_name=format_name,
+                                             file_name=file_name)
         ff.stream = proc
 
         return ff

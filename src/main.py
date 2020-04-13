@@ -376,6 +376,31 @@ async def _on_message(message, log):
     playlist_end = None
     y_format = None
 
+    if cmd == 'r':
+        reply_to_message = message.get('reply_to_message')
+        if not reply_to_message:
+            await _bot.send_message(chat_id, 'Please forward to me media file then reply to it\n'
+                                             'and provide me caption you want me add, like: /r hello this my new caption',
+                                    reply_to_message_id=msg_id)
+            return
+
+        msg_txt_no_cmd = msg_txt[message['entities'][0]['length'] + message['entities'][0]['offset']:]
+        if msg_txt_no_cmd == '':
+            msg_txt_no_cmd = None
+        if 'video' in reply_to_message:
+            file = reply_to_message['video']
+            file_id = file['file_id']
+            await _bot.send_video(chat_id, file_id, caption=msg_txt_no_cmd)
+        elif 'audio' in reply_to_message:
+            file = reply_to_message['audio']
+            file_id = file['file_id']
+            await _bot.send_audio(chat_id, file_id, caption=msg_txt_no_cmd)
+        elif 'document' in reply_to_message:
+            file = reply_to_message['document']
+            file_id = file['file_id']
+            await _bot.send_document(chat_id, file_id, caption=msg_txt_no_cmd)
+        return
+
     user = None
     # check cmd and choose video format
     cut_time_start = cut_time_end = None
@@ -1121,7 +1146,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm'] + playlist_cmds
+available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm', 'r'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30

@@ -210,7 +210,7 @@ async def _on_message_task(message):
             # to download any video for some time
             if e.code == 429:
                 log.critical(e)
-                await abort()
+                await shutdown()
             else:
                 log.exception(e)
                 await _bot.send_message(chat_id, e.__str__(), reply_to_message_id=msg_id)
@@ -222,7 +222,7 @@ async def _on_message_task(message):
             if e.exc_info[0] is HTTPError:
                 if e.exc_info[1].file.code == 429:
                     log.critical(e)
-                    await abort()
+                    await shutdown()
 
             log.exception(e)
             await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
@@ -1138,9 +1138,17 @@ async def init_bot_enitty():
         print(e)
 
 
-async def abort():
+async def shutdown():
     await client.disconnect()
-    os.abort()
+    sys.exit(1)
+
+
+async def tg_client_shutdown(_app=None):
+    await client.disconnect()
+
+
+def sig_handler():
+    asyncio.run_coroutine_threadsafe(shutdown(), asyncio.get_event_loop())
 
 
 if __name__ == '__main__':
@@ -1150,7 +1158,9 @@ if __name__ == '__main__':
     client.start()
     # asyncio.get_event_loop().create_task(bot._run_until_disconnected())
     asyncio.get_event_loop().create_task(init_bot_enitty())
-    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, client.disconnect)
-    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, client.disconnect)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, sig_handler)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, sig_handler)
+    asyncio.get_event_loop().add_signal_handler(signal.SIGHUP, sig_handler)
+    app.on_shutdown.append(tg_client_shutdown)
     asyncio.get_event_loop().create_task(web.run_app(app))
     client.run_until_disconnected()

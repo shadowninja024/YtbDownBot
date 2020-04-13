@@ -837,16 +837,16 @@ async def _on_message(message, log):
                         title = performer = None
                         format_name = ''
                         if cmd == 'a':
-                            if ('duration' not in entry and 'duration' not in chosen_format):
+                            if entry.get('duration') is None and chosen_format.get('duration') is None:
                                 # info = await av_utils.av_info(chosen_format['url'],
                                 #                               use_m3u8=('m3u8' in chosen_format['protocol']))
                                 info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
                                 duration = int(float(info['format'].get('duration', 0)))
                             else:
-                                duration = int(entry['duration']) if 'duration' not in entry else int(entry['duration'])
+                                duration = int(chosen_format['duration']) if 'duration' not in entry else int(entry['duration'])
 
-                        elif ('duration' not in entry and 'duration' not in chosen_format) or \
-                                ('width' not in chosen_format) or ('height' not in chosen_format):
+                        elif (entry.get('duration') is None and chosen_format.get('duration') is None) or \
+                                (chosen_format.get('width') is None or chosen_format.get('height') is None):
                             # info =  await av_utils.av_info(chosen_format['url'],
                             #                                use_m3u8=('m3u8' in chosen_format['protocol']))
                             info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
@@ -878,7 +878,7 @@ async def _on_message(message, log):
                                 format_name = ''
                         else:
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
-                                                      int(entry['duration']) if 'duration' not in entry else int(
+                                                      int(chosen_format['duration']) if 'duration' not in entry else int(
                                                           entry['duration'])
 
                         if 'mp4 - unknown' in chosen_format.get('format', '') and chosen_format.get('ext', '') != 'mp4':

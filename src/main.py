@@ -165,7 +165,7 @@ async def on_message(request):
             return web.Response(status=200)
 
         msg_task = asyncio.get_event_loop().create_task(_on_message_task(message))
-        asyncio.get_event_loop().create_task(task_timeout_cancel(msg_task, timemout=5500))
+        asyncio.get_event_loop().create_task(task_timeout_cancel(msg_task, timemout=10800))
     except Exception as e:
         print(e)
         traceback.print_exc()

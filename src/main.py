@@ -964,7 +964,7 @@ async def _on_message(message, log):
                                 duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(
                                     cut_time_start)
 
-                        if (cut_time_start is not None or (cmd == 'a' and chosen_format.get('ext') != 'mp3')) and ffmpeg_av is None:
+                        if (cut_time_start is not None or (cmd == 'a' and not in (chosen_format.get('ext') != ['mp3', 'm4a', 'ogg']))) and ffmpeg_av is None:
                             ext = chosen_format.get('ext')
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,
@@ -972,7 +972,7 @@ async def _on_message(message, log):
                                                                         ext=ext,
                                                                         audio_only=True if cmd == 'a' else False,
                                                                         format_name=format_name if ext != 'mp4' and format_name != '' else '')
-                        if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and video_codec == 'h264' and \
+                        if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and (video_codec == 'h264' or video_codec == 'hevc') and \
                                 (audio_codec == 'mp3' or audio_codec == 'aac'):
                             file_name = entry.get('title', 'default') + '.mp4'
                             if STORAGE_SIZE > file_size > 0:

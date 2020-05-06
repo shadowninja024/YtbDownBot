@@ -990,7 +990,10 @@ async def _on_message(message, log):
 
                         ffmpeg_cancel_task = None
                         if ffmpeg_av is not None:
-                            ffmpeg_cancel_task = asyncio.get_event_loop().call_later(4000, ffmpeg_av.safe_close)
+                            cancel_time = 5000
+                            if cut_time_start is not None:
+                                cancel_time = duration + 300
+                            ffmpeg_cancel_task = asyncio.get_event_loop().call_later(cancel_time, ffmpeg_av.safe_close)
                         global TG_CONNECTIONS_COUNT
                         global TG_MAX_PARALLEL_CONNECTIONS
                         try:

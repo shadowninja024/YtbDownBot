@@ -943,7 +943,7 @@ async def _on_message(message, log):
                                                             'ERROR: Cut start time is bigger than media duration: *' + str(timedelta(seconds=duration))+'*',
                                                             parse_mode='Markdown')
                                     return
-                                elif cut_time_end is not None and cut_time.time_to_seconds(cut_time_end) > duration:
+                                elif cut_time_end is not None and (cut_time.time_to_seconds(cut_time_end) > duration != 0):
                                     await _bot.send_message(chat_id,
                                                             'ERROR: Cut end time is bigger than media duration: *' + str(timedelta(seconds=duration)) +'*\n'
                                                             'You can eliminate end time if you want it to be equal to media duration\n'
@@ -951,9 +951,9 @@ async def _on_message(message, log):
                                                             parse_mode='Markdown')
                                     return
                                 elif cut_time_end is None:
-                                    duration = duration - cut_time.time_to_seconds(cut_time_start)
+                                    duration = abs(duration - cut_time.time_to_seconds(cut_time_start))
                                 else:
-                                    duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start)
+                                    duration = abs(cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
                             else:
                                 duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(
                                     cut_time_start)

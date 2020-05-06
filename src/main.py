@@ -905,7 +905,7 @@ async def _on_message(message, log):
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
                                                       int(chosen_format['duration']) if 'duration' not in entry else int(
                                                           entry['duration'])
-                        if 'm3u8' in chosen_format.get('protocol', '') and duration == 0 and ffmpeg_av is not None:
+                        if 'm3u8' in chosen_format.get('protocol', '') and duration == 0 and ffmpeg_av is not None and cut_time_start is None:
                             cut_time_start, cut_time_end = (time(hour=0, minute=0, second=0),
                                                             time(hour=1, minute=0, second=0))
                             _cut_time = (cut_time_start, cut_time_end)

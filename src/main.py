@@ -943,7 +943,7 @@ async def _on_message(message, log):
 
                         # in case of video is live we don't know real duration
                         if cut_time_start is not None:
-                            if not entry.get('is_live'):
+                            if not entry.get('is_live') and duration != 0:
                                 if cut_time.time_to_seconds(cut_time_start) > duration:
                                     await _bot.send_message(chat_id,
                                                             'ERROR: Cut start time is bigger than media duration: *' + str(timedelta(seconds=duration))+'*',

@@ -956,13 +956,12 @@ async def _on_message(message, log):
                                                             'Like: `/c 1:24 youtube.com`',
                                                             parse_mode='Markdown')
                                     return
-                                elif cut_time_end is None:
-                                    duration = abs(duration - cut_time.time_to_seconds(cut_time_start))
-                                else:
-                                    duration = abs(cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
+                            if cut_time_end is None:
+                                if duration == 0:
+                                    duration = 10000
+                                duration = abs(duration - cut_time.time_to_seconds(cut_time_start))
                             else:
-                                duration = cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(
-                                    cut_time_start)
+                                duration = abs(cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
 
                         if (cut_time_start is not None or (cmd == 'a' and (chosen_format.get('ext') not in ['mp3', 'm4a', 'ogg']))) and ffmpeg_av is None:
                             ext = chosen_format.get('ext')

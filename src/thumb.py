@@ -55,7 +55,7 @@ async def get_image_from_video(url, headers=None):
     vinfo = await av_utils.av_info(url, headers)
     _format = vinfo.get('format')
     if _format:
-        duration = int(float(vinfo['format']['duration']))
+        duration = int(float(vinfo.get('format', {}).get('duration', 0)))
         duration = int(duration / 3)
     else:
         duration = 5

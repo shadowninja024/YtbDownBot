@@ -1,6 +1,7 @@
 import m3u8
 import asyncio
 import json
+import os, signal
 from aiohttp import ClientSession, hdrs, TCPConnector
 from http.client import responses
 from urllib.parse import urlparse
@@ -60,6 +61,7 @@ async def _av_info(url, http_headers=''):
     try:
         out = await asyncio.wait_for(ff_proc.stdout.read(), timeout=120)
     except asyncio.TimeoutError as e:
+        os.kill(ff_proc.pid, signal.SIGKILL)
         print(e)
         return {}
     info = json.loads(out)

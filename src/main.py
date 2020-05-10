@@ -180,7 +180,6 @@ async def task_timeout_cancel(task, timemout=5):
         task.cancel()
 
 
-
 # share uploaded by client api file to user
 async def share_content_with_user(message, with_reply=True):
     _user_id, _reply_msg_id, user_caption = message['caption'].split(':', maxsplit=2)
@@ -306,10 +305,15 @@ async def send_settings(user, user_id, edit_id=None):
         # msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
         # await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
 
-is_ytb_link_re = re.compile('^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$')
-get_ytb_id_re = re.compile('.*(youtu.be\/|v\/|embed\/|watch\?|youtube.com\/user\/[^#]*#([^\/]*?\/)*)\??v?=?([^#\&\?]*).*')
+
+is_ytb_link_re = re.compile(
+    '^((?:https?:)?\/\/)?((?:www|m|music)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$')
+get_ytb_id_re = re.compile(
+    '.*(youtu.be\/|v\/|embed\/|watch\?|youtube.com\/user\/[^#]*#([^\/]*?\/)*)\??v?=?([^#\&\?]*).*')
 
 single_time_re = re.compile(' ((2[0-3]|[01]?[0-9]):)?(([0-5]?[0-9]):)?([0-5]?[0-9])(\\.[0-9]+)? ')
+
+
 async def send_screenshot(user_id, msg_txt, url, http_headers=None):
     time_match = single_time_re.search(msg_txt)
     pic_time = None
@@ -335,7 +339,6 @@ async def send_screenshot(user_id, msg_txt, url, http_headers=None):
 
 
 def normalize_url_path(url):
-
     parsed = list(urlparse(url))
     parsed[2] = re.sub("/{2,}", "/", parsed[2])
 
@@ -446,7 +449,8 @@ async def _on_message(message, log):
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
-                await _bot.send_message(chat_id, 'Wrong message format, correct example: `/' + cmd + " 4-9 " + 'youtube.com/playlist`',
+                await _bot.send_message(chat_id,
+                                        'Wrong message format, correct example: `/' + cmd + " 4-9 " + 'youtube.com/playlist`',
                                         reply_to_message_id=msg_id,
                                         parse_mode='Markdown')
                 # await bot.send_message(chat_id,
@@ -568,7 +572,8 @@ async def _on_message(message, log):
                                     raise youtube_dl.DownloadError('youtube age limit')
                             except youtube_dl.DownloadError as e:
                                 # try to use invidio.us youtube frontend to bypass 429 block
-                                if (e.exc_info is not None and e.exc_info[0] is HTTPError and e.exc_info[1].file.code == 429) or \
+                                if (e.exc_info is not None and e.exc_info[0] is HTTPError and e.exc_info[
+                                    1].file.code == 429) or \
                                         'video available in your country' in str(e) or \
                                         'youtube age limit' == str(e):
                                     invid_url = youtube_to_invidio(u, cmd == 'a')
@@ -674,13 +679,15 @@ async def _on_message(message, log):
                     try:
                         if formats is not None:
                             for i, f in enumerate(formats):
-                                if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                                if f['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism',
+                                                     'http_dash_segments']:
                                     # await bot.send_message(chat_id, "ERROR: Failed find suitable format for: " + entry['title'], reply_to=msg_id)
                                     continue
                                 if 'm3u8' in f['protocol']:
                                     file_size = await av_utils.m3u8_video_size(f['url'], http_headers)
                                 else:
-                                    if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None and f['filesize'] != 'none':
+                                    if 'filesize' in f and f['filesize'] != 0 and f['filesize'] is not None and f[
+                                        'filesize'] != 'none':
                                         file_size = f['filesize']
                                     else:
                                         try:
@@ -696,7 +703,8 @@ async def _on_message(message, log):
 
                                 # Dash video
                                 if f['protocol'] == 'https' and \
-                                        (True if ('acodec' in f and (f['acodec'] == 'none' or f['acodec'] == None)) else False):
+                                        (True if ('acodec' in f and (
+                                                f['acodec'] == 'none' or f['acodec'] == None)) else False):
                                     vformat = f
                                     mformat = None
                                     vsize = 0
@@ -705,7 +713,8 @@ async def _on_message(message, log):
                                     if 'invidio.us' in direct_url:
                                         vformat['url'] = normalize_url_path(direct_url)
 
-                                    if 'filesize' in vformat and vformat['filesize'] != 0 and vformat['filesize'] is not None and vformat['filesize'] != 'none':
+                                    if 'filesize' in vformat and vformat['filesize'] != 0 and vformat[
+                                        'filesize'] is not None and vformat['filesize'] != 'none':
                                         vsize = vformat['filesize']
                                     else:
                                         vsize = await av_utils.media_size(vformat['url'], http_headers=http_headers)
@@ -731,7 +740,8 @@ async def _on_message(message, log):
                                         if not cut_time_start and STORAGE_SIZE > file_size > 0:
                                             STORAGE_SIZE -= file_size
                                             _ext = 'mp4' if cmd != 'a' else 'mp3'
-                                            file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
+                                            file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry[
+                                                'title'] + '.' + _ext
                                         ffmpeg_av = await av_source.FFMpegAV.create(vformat,
                                                                                     mformat,
                                                                                     headers=http_headers,
@@ -751,7 +761,8 @@ async def _on_message(message, log):
                                                 'filesize'] is not None and mformat['filesize'] != 'none':
                                                 msize = mformat['filesize']
                                             else:
-                                                msize = await av_utils.media_size(mformat['url'], http_headers=http_headers)
+                                                msize = await av_utils.media_size(mformat['url'],
+                                                                                  http_headers=http_headers)
                                             msize += 10 * 1024 * 1024
                                             if (msize + file_size) > TG_MAX_FILE_SIZE:
                                                 mformat = None
@@ -786,7 +797,8 @@ async def _on_message(message, log):
                                     break
 
                         else:
-                            if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism', 'http_dash_segments']:
+                            if entry['protocol'] in ['rtsp', 'rtmp', 'rtmpe', 'mms', 'f4m', 'ism',
+                                                     'http_dash_segments']:
                                 # await bot.send_message(chat_id, "ERROR: Failed find suitable format for : " + entry['title'], reply_to=msg_id)
                                 # if 'playlist' in entry and entry['playlist'] is not None:
                                 recover_playlist_index = ie
@@ -798,7 +810,8 @@ async def _on_message(message, log):
                                     # we don't know real size
                                     file_size = 0
                             else:
-                                if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None and entry['filesize'] != 'none':
+                                if 'filesize' in entry and entry['filesize'] != 0 and entry['filesize'] is not None and \
+                                        entry['filesize'] != 'none':
                                     file_size = entry['filesize']
                                 else:
                                     direct_url = entry['url']
@@ -837,9 +850,10 @@ async def _on_message(message, log):
                             if len(preferred_formats) - 1 == ip:
                                 if file_size > TG_MAX_FILE_SIZE:
                                     log.info('too big file ' + str(file_size))
-                                    await _bot.send_message(chat_id, f'ERROR: Too big media file size *{sizeof_fmt(file_size)}*,\n'
-                                                                     'Telegram allow only up to *1.5GB*\n'
-                                                                     'you can try cut it by command like:\n `/c 0-10:00 ' + u+'`',
+                                    await _bot.send_message(chat_id,
+                                                            f'ERROR: Too big media file size *{sizeof_fmt(file_size)}*,\n'
+                                                            'Telegram allow only up to *1.5GB*\n'
+                                                            'you can try cut it by command like:\n `/c 0-10:00 ' + u + '`',
                                                             reply_to_message_id=msg_id,
                                                             parse_mode="Markdown")
                                 else:
@@ -854,7 +868,7 @@ async def _on_message(message, log):
                         if cmd == 'a' and file_size != 0 and (ffmpeg_av is None or ffmpeg_av.file_name is None):
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
-                            file_size += 10 * 1024 * 1024 # 10MB
+                            file_size += 10 * 1024 * 1024  # 10MB
 
                         log.debug('uploading file')
 
@@ -868,7 +882,8 @@ async def _on_message(message, log):
                                 info = await av_utils.av_info(chosen_format['url'], http_headers=http_headers)
                                 duration = int(float(info['format'].get('duration', 0)))
                             else:
-                                duration = int(chosen_format['duration']) if 'duration' not in entry else int(entry['duration'])
+                                duration = int(chosen_format['duration']) if 'duration' not in entry else int(
+                                    entry['duration'])
 
                         elif (entry.get('duration') is None and chosen_format.get('duration') is None) or \
                                 (chosen_format.get('width') is None or chosen_format.get('height') is None):
@@ -903,9 +918,11 @@ async def _on_message(message, log):
                                 format_name = ''
                         else:
                             width, height, duration = chosen_format['width'], chosen_format['height'], \
-                                                      int(chosen_format['duration']) if 'duration' not in entry else int(
+                                                      int(chosen_format[
+                                                              'duration']) if 'duration' not in entry else int(
                                                           entry['duration'])
-                        if 'm3u8' in chosen_format.get('protocol', '') and duration == 0 and ffmpeg_av is not None and cut_time_start is None:
+                        if 'm3u8' in chosen_format.get('protocol',
+                                                       '') and duration == 0 and ffmpeg_av is not None and cut_time_start is None:
                             cut_time_start, cut_time_end = (time(hour=0, minute=0, second=0),
                                                             time(hour=1, minute=0, second=0))
                             _cut_time = (cut_time_start, cut_time_end)
@@ -915,7 +932,8 @@ async def _on_message(message, log):
                         if 'mp4 - unknown' in chosen_format.get('format', '') and chosen_format.get('ext', '') != 'mp4':
                             chosen_format['ext'] = 'mp4'
                         elif 'unknown' in chosen_format['ext'] or 'php' in chosen_format['ext']:
-                            mime, cd_file_name = await av_utils.media_mime(chosen_format['url'], http_headers=http_headers)
+                            mime, cd_file_name = await av_utils.media_mime(chosen_format['url'],
+                                                                           http_headers=http_headers)
                             if cd_file_name:
                                 cd_splited_file_name, cd_ext = os.path.splitext(cd_file_name)
                                 if len(cd_ext) > 0:
@@ -946,14 +964,17 @@ async def _on_message(message, log):
                             if not entry.get('is_live') and duration != 0:
                                 if cut_time.time_to_seconds(cut_time_start) > duration:
                                     await _bot.send_message(chat_id,
-                                                            'ERROR: Cut start time is bigger than media duration: *' + str(timedelta(seconds=duration))+'*',
+                                                            'ERROR: Cut start time is bigger than media duration: *' + str(
+                                                                timedelta(seconds=duration)) + '*',
                                                             parse_mode='Markdown')
                                     return
-                                elif cut_time_end is not None and (cut_time.time_to_seconds(cut_time_end) > duration != 0):
+                                elif cut_time_end is not None and (
+                                        cut_time.time_to_seconds(cut_time_end) > duration != 0):
                                     await _bot.send_message(chat_id,
-                                                            'ERROR: Cut end time is bigger than media duration: *' + str(timedelta(seconds=duration)) +'*\n'
-                                                            'You can eliminate end time if you want it to be equal to media duration\n'
-                                                            'Like: `/c 1:24 youtube.com`',
+                                                            'ERROR: Cut end time is bigger than media duration: *' + str(
+                                                                timedelta(seconds=duration)) + '*\n'
+                                                                                               'You can eliminate end time if you want it to be equal to media duration\n'
+                                                                                               'Like: `/c 1:24 youtube.com`',
                                                             parse_mode='Markdown')
                                     return
                             if cut_time_end is None:
@@ -961,9 +982,11 @@ async def _on_message(message, log):
                                     duration = 10000
                                 duration = abs(duration - cut_time.time_to_seconds(cut_time_start))
                             else:
-                                duration = abs(cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
+                                duration = abs(
+                                    cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
 
-                        if (cut_time_start is not None or (cmd == 'a' and (chosen_format.get('ext') not in ['mp3', 'm4a', 'ogg']))) and ffmpeg_av is None:
+                        if (cut_time_start is not None or (cmd == 'a' and (
+                                chosen_format.get('ext') not in ['mp3', 'm4a', 'ogg']))) and ffmpeg_av is None:
                             ext = chosen_format.get('ext')
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,
@@ -971,7 +994,8 @@ async def _on_message(message, log):
                                                                         ext=ext,
                                                                         audio_only=True if cmd == 'a' else False,
                                                                         format_name=format_name if ext != 'mp4' and format_name != '' else '')
-                        if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and (video_codec == 'h264' or video_codec == 'hevc') and \
+                        if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and (
+                                video_codec == 'h264' or video_codec == 'hevc') and \
                                 (audio_codec == 'mp3' or audio_codec == 'aac'):
                             file_name = entry.get('title', 'default') + '.mp4'
                             if STORAGE_SIZE > file_size > 0:
@@ -983,7 +1007,8 @@ async def _on_message(message, log):
                             chosen_format['url'],
                             http_headers)
 
-                        ext = (chosen_format['ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
+                        ext = (
+                            chosen_format['ext'] if ffmpeg_av is None or ffmpeg_av.format is None else ffmpeg_av.format)
                         file_name_no_ext = entry['title']
                         if not file_name_no_ext[-1].isalnum():
                             file_name_no_ext = file_name_no_ext[:-1] + '_'
@@ -1011,12 +1036,12 @@ async def _on_message(message, log):
                                 upload_file = await local_file.__aenter__()
                             # uploading piped ffmpeg file is slow anyway
                             # TODO проверка на то что ffmpeg_av имееет file_name
-                            if (file_size > 20*1024*1024 and TG_CONNECTIONS_COUNT < TG_MAX_PARALLEL_CONNECTIONS) and \
-                                (isinstance(upload_file, av_source.URLav) or
-                                 isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader)):
+                            if (file_size > 20 * 1024 * 1024 and TG_CONNECTIONS_COUNT < TG_MAX_PARALLEL_CONNECTIONS) and \
+                                    (isinstance(upload_file, av_source.URLav) or
+                                     isinstance(upload_file, aiofiles.threadpool.binary.AsyncBufferedReader)):
                                 try:
                                     connections = 2
-                                    if TG_CONNECTIONS_COUNT < 12 and file_size > 100*1024*1024:
+                                    if TG_CONNECTIONS_COUNT < 12 and file_size > 100 * 1024 * 1024:
                                         connections = 4
 
                                     TG_CONNECTIONS_COUNT += connections

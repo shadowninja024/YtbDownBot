@@ -346,4 +346,10 @@ async def _video_screenshot(url, headers=None, screen_time=None, quality=5):
                                                 stdout=asyncio.subprocess.PIPE,
                                                 stderr=asyncio.subprocess.PIPE)
 
-    return await proc.stdout.read()
+    try:
+        out = await asyncio.wait_for(proc.stdout.read(), timeout=360)
+    except asyncio.TimeoutError as e:
+        os.kill(proc.pid, signal.SIGKILL)
+        print(e)
+        return b'\0'
+    return out

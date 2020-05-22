@@ -78,6 +78,14 @@ class User:
         self.settings['video_caption'] = toggle
         await asyncio.get_event_loop().run_in_executor(None, self.settings.save)
 
+    @property
+    def donator(self):
+        return self.settings.get('donator', 0) == 1
+
+    async def set_donator(self, toggle):
+        self.settings['donator'] = toggle
+        await asyncio.get_event_loop().run_in_executor(None, self.settings.save)
+
     async def sync_with_db(self):
         await asyncio.get_event_loop().run_in_executor(None, self.settings.fetch)
 

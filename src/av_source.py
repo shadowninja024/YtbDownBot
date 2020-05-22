@@ -2,6 +2,7 @@ import typing
 import ffmpeg
 import asyncio
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
+from urllib import request
 import cut_time
 import av_utils
 from datetime import datetime
@@ -314,6 +315,60 @@ class URLav(DumbReader):
     async def close(self) -> None:
         # self.request.release()
         await self.session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
+
+
+class URLavSync(DumbReader):
+    def __init__(self):
+        self._buf = b''
+
+    @staticmethod
+    def create(url, headers=None):
+        urlav = URLavSync._create(url, headers)
+        if urlav.request.status != 200:
+            urlav.close()
+            urlav = URLavSync._create(url)
+        return urlav
+
+
+    @staticmethod
+    def _create(url, headers=None):
+        u = URLavSync()
+        req = request.Request(url, headers=headers)
+        u.request = request.urlopen(req)
+
+        return u
+
+    def read(self, n: int = -1):
+        buf = b''
+        if len(self._buf) != 0:
+            buf += self._buf
+            self._buf = b''
+        if n == -1:
+            return self.request.read()
+
+        while len(buf) < n:
+            _data = self.request.read(n)
+            if len(_data) == 0:
+                break
+            buf += _data
+        if len(buf) > n != -1:
+            self._buf = buf[n:]
+            return buf[:n]
+        else:
+            return buf
+
+    def close(self) -> None:
+        self.request.release()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        b = self.read(256 * 1024)
+        if len(b) == 0:
+            raise StopIteration()
+        else:
+            return b
 
 
 async def video_screenshot(url, headers=None, screen_time=None, quality=5):

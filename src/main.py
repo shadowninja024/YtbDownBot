@@ -1060,7 +1060,7 @@ async def _on_message(message, log):
                                     return
                             if cut_time_end is None:
                                 if duration == 0:
-                                    duration = 10000
+                                    duration = 20000
                                 duration = abs(duration - cut_time.time_to_seconds(cut_time_start))
                             else:
                                 duration = abs(
@@ -1101,7 +1101,7 @@ async def _on_message(message, log):
 
                         ffmpeg_cancel_task = None
                         if ffmpeg_av is not None:
-                            cancel_time = 5000
+                            cancel_time = 20000
                             if cut_time_start is not None:
                                 cancel_time = duration + 300
                             ffmpeg_cancel_task = asyncio.get_event_loop().call_later(cancel_time, ffmpeg_av.safe_close)

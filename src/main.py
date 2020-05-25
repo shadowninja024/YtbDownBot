@@ -1025,16 +1025,17 @@ async def _on_message(message, log):
                                     chosen_format['title'] = cd_splited_file_name
                             else:
                                 ext = mimetypes.guess_extension(mime)
-                                if ext is None or ext == '':
+                                if ext is None or ext == '' or ext == '.bin':
                                     if format_name is None or format_name == '':
-                                        if len(preferred_formats) - 1 == ip:
-                                            await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
-                                                                    reply_to_message_id=msg_id)
-                                        # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
-                                        continue
+                                        chosen_format['ext'] = 'bin'
                                     else:
                                         if format_name == 'mov':
-                                            format_name = 'mp4'
+                                            if cmd == 'a':
+                                                format_name = 'm4a'
+                                            else:
+                                                format_name = 'mp4'
+                                        if format_name == 'matroska':
+                                            format_name = 'mkv'
                                         chosen_format['ext'] = format_name
                                 else:
                                     ext = ext[1:]

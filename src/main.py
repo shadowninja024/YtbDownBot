@@ -904,7 +904,7 @@ async def _on_message(message, log):
                             if len(preferred_formats) - 1 == ip:
                                 if _file_size > TG_MAX_FILE_SIZE:
                                     log.info('too big file ' + str(_file_size))
-                                    if 'http' in entry.get('protocol', '') and 'unknown' in entry.get('format', '') and 'unknown_video' != entry.get('ext', ''):
+                                    if 'http' in entry.get('protocol', '') and 'unknown' in entry.get('format', '') and entry.get('ext', '') not in ['unknown_video', 'mp3', 'mp4', 'm4a', 'ogg', 'mkv', 'flv', 'avi', 'webm']:
                                         if not user.donator:
                                             await _bot.send_message(chat_id,
                                                                     'File bigger than *1.5 GB*\n' +

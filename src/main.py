@@ -596,7 +596,8 @@ async def _on_message(message, log):
                       'youtube_include_dash_manifest': False,
                       'quiet': True,
                       'no_color': True,
-                      'nocheckcertificate': True
+                      'nocheckcertificate': True,
+                      'ignoreerrors': True
                       # 'force_generic_extractor': True if 'invidio.us/watch' in u else False
                       }
             if playlist_start != None and playlist_end != None: #and 'invidio.us/watch' not in u:

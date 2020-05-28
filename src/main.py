@@ -695,6 +695,10 @@ async def _on_message(message, log):
 
                 for ie, entry in enumerate(entries):
                     if entry is None:
+                        try:
+                            await _bot.send_message(chat_id, f'WARN: #{params['playliststart'] + ie} was skipped due to error', reply_to_message_id=msg_id)
+                        except:
+                            pass
                         continue
                     formats = entry.get('requested_formats')
                     _file_size = None

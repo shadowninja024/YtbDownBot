@@ -694,6 +694,8 @@ async def _on_message(message, log):
                     entries = [vinfo]
 
                 for ie, entry in enumerate(entries):
+                    if entry is None:
+                        continue
                     formats = entry.get('requested_formats')
                     _file_size = None
                     chosen_format = None

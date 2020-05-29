@@ -31,6 +31,8 @@ class User:
                 # update doc from _changes request to eliminate reading operation
                 user.settings.update(change['doc'])
                 # await user.sync_with_db()
+            if user.banned:
+                raise Exception('You are BANNED!')
             return user
 
         user_id = 'user' + str(id)
@@ -81,6 +83,10 @@ class User:
     @property
     def donator(self):
         return self.settings.get('donator', 0) == 1
+
+    @property
+    def banned(self):
+        return self.settings.get('banned', 0) == 1
 
     async def set_donator(self, toggle):
         self.settings['donator'] = toggle

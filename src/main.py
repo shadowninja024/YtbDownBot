@@ -906,7 +906,7 @@ async def _on_message(message, log):
                                                                                 headers=http_headers,
                                                                                 cut_time_range=_cut_time)
 
-                        if chosen_format is None and ffmpeg_av is None:
+                        if chosen_format is None and ffmpeg_av is None and cmd != 'z':
                             if len(preferred_formats) - 1 == ip:
                                 if _file_size > TG_MAX_FILE_SIZE:
                                     log.info('too big file ' + str(_file_size))

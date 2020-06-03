@@ -416,6 +416,7 @@ async def _on_message(message, log):
     playlist_start = None
     playlist_end = None
     y_format = None
+    audio_mode = False
 
     if cmd == 'r':
         reply_to_message = message.get('reply_to_message')
@@ -526,6 +527,7 @@ async def _on_message(message, log):
             cmd = cmd if len(cmd) == 1 else cmd[-1]
         if cmd == 'a':
             # audio cmd
+            audio_mode = True
             y_format = audio_format
         elif cmd == 'w':
             # wordst video cmd
@@ -565,10 +567,10 @@ async def _on_message(message, log):
     if user is None:
         user = await users.User.init(chat_id)
     if user.default_media_type == users.DefaultMediaType.Audio.value:
-        cmd = 'a'
+        audio_mode = True
 
     preferred_formats = None
-    if cmd != 'a':
+    if audio_mode == False:
         if y_format is not None:
             preferred_formats = [y_format]
         elif user.video_format == users.VideoFormat.HIGH.value:
@@ -630,7 +632,7 @@ async def _on_message(message, log):
                                     1].file.code == 429) or \
                                         'video available in your country' in str(e) or \
                                         'youtube age limit' == str(e):
-                                    invid_url = youtube_to_invidio(u, cmd == 'a')
+                                    invid_url = youtube_to_invidio(u, audio_mode == True)
                                     if invid_url:
                                         u = invid_url
                                         ydl.params['force_generic_extractor'] = True
@@ -799,7 +801,7 @@ async def _on_message(message, log):
                                         file_name = None
                                         if not cut_time_start and STORAGE_SIZE > _file_size > 0:
                                             STORAGE_SIZE -= _file_size
-                                            _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                            _ext = 'mp4' if audio_mode == False else 'mp3'
                                             file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry[
                                                 'title'] + '.' + _ext
                                         ffmpeg_av = await av_source.FFMpegAV.create(vformat,
@@ -832,11 +834,11 @@ async def _on_message(message, log):
                                     file_name = None
                                     if not cut_time_start and STORAGE_SIZE > _file_size > 0:
                                         STORAGE_SIZE -= _file_size
-                                        _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                        _ext = 'mp4' if audio_mode == False else 'mp3'
                                         file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 aformat=mformat,
-                                                                                audio_only=True if cmd == 'a' else False,
+                                                                                audio_only=True if audio_mode == True else False,
                                                                                 headers=http_headers,
                                                                                 cut_time_range=_cut_time,
                                                                                 file_name=file_name)
@@ -849,7 +851,7 @@ async def _on_message(message, log):
                                     if 'invidio.us' in direct_url:
                                         chosen_format['url'] = normalize_url_path(direct_url)
 
-                                    if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                    if audio_mode == True and not (chosen_format['ext'] == 'mp3'):
                                         ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                     audio_only=True,
                                                                                     headers=http_headers,
@@ -864,7 +866,7 @@ async def _on_message(message, log):
                                 recover_playlist_index = ie
                                 break
                             if 'm3u8' in entry['protocol']:
-                                if cut_time_start is None and entry.get('is_live', False) is False and cmd != 'a':
+                                if cut_time_start is None and entry.get('is_live', False) is False and audio_mode == False:
                                     _file_size = await av_utils.m3u8_video_size(entry['url'], http_headers=http_headers)
                                 else:
                                     # we don't know real size
@@ -888,10 +890,10 @@ async def _on_message(message, log):
                                 file_name = None
                                 if not cut_time_start and STORAGE_SIZE > _file_size > 0:
                                     STORAGE_SIZE -= _file_size
-                                    _ext = 'mp4' if cmd != 'a' else 'mp3'
+                                    _ext = 'mp4' if audio_mode == False else 'mp3'
                                     file_name = str(chat_id) + ':' + str(msg_id) + ':' + entry['title'] + '.' + _ext
                                 ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
-                                                                            audio_only=True if cmd == 'a' else False,
+                                                                            audio_only=True if audio_mode == True else False,
                                                                             headers=http_headers,
                                                                             cut_time_range=_cut_time,
                                                                             file_name=file_name)
@@ -900,7 +902,7 @@ async def _on_message(message, log):
                                 direct_url = chosen_format['url']
                                 if 'invidio.us' in direct_url:
                                     chosen_format['url'] = normalize_url_path(direct_url)
-                                if cmd == 'a' and not (chosen_format['ext'] == 'mp3'):
+                                if audio_mode == True and not (chosen_format['ext'] == 'mp3'):
                                     ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                                 audio_only=True,
                                                                                 headers=http_headers,
@@ -953,7 +955,7 @@ async def _on_message(message, log):
                                                        entry['title'] + '.' + entry['ext'], _file_size, chat_id,
                                                        msg_id)
                             return
-                        if cmd == 'a' and _file_size != 0 and (ffmpeg_av is None or ffmpeg_av.file_name is None):
+                        if audio_mode == True and _file_size != 0 and (ffmpeg_av is None or ffmpeg_av.file_name is None):
                             # we don't know real size due to converting formats
                             # so increase it in case of real size is less large then estimated
                             _file_size += 10 * 1024 * 1024  # 10MB
@@ -963,7 +965,7 @@ async def _on_message(message, log):
                         width = height = duration = video_codec = audio_codec = None
                         title = performer = None
                         format_name = ''
-                        if cmd == 'a':
+                        if audio_mode == True:
                             if entry.get('duration') is None and chosen_format.get('duration') is None:
                                 # info = await av_utils.av_info(chosen_format['url'],
                                 #                               use_m3u8=('m3u8' in chosen_format['protocol']))
@@ -988,7 +990,7 @@ async def _on_message(message, log):
                                     elif s.get('codec_type') == 'audio':
                                         audio_codec = s['codec_name']
                                 if video_codec is None:
-                                    cmd = 'a'
+                                    audio_mode = True
                                 _av_format = info['format']
                                 duration = int(float(_av_format.get('duration', 0)))
                                 format_name = _av_format.get('format_name', '').split(',')[0]
@@ -998,7 +1000,7 @@ async def _on_message(message, log):
                                     performer = av_tags.get('artist')
                                 _av_ext = chosen_format.get('ext', '')
                                 if _av_ext == 'mp3' or _av_ext == 'm4a' or _av_ext == 'ogg' or format_name == 'mp3' or format_name == 'ogg':
-                                    cmd = 'a'
+                                    audio_mode = True
                             except KeyError:
                                 width = 0
                                 height = 0
@@ -1037,7 +1039,7 @@ async def _on_message(message, log):
                                         chosen_format['ext'] = 'bin'
                                     else:
                                         if format_name == 'mov':
-                                            if cmd == 'a':
+                                            if audio_mode == True:
                                                 format_name = 'm4a'
                                             else:
                                                 format_name = 'mp4'
@@ -1074,14 +1076,14 @@ async def _on_message(message, log):
                                 duration = abs(
                                     cut_time.time_to_seconds(cut_time_end) - cut_time.time_to_seconds(cut_time_start))
 
-                        if (cut_time_start is not None or (cmd == 'a' and (
+                        if (cut_time_start is not None or (audio_mode == True and (
                                 chosen_format.get('ext') not in ['mp3', 'm4a', 'ogg']))) and ffmpeg_av is None:
                             ext = chosen_format.get('ext')
                             ffmpeg_av = await av_source.FFMpegAV.create(chosen_format,
                                                                         headers=http_headers,
                                                                         cut_time_range=_cut_time,
                                                                         ext=ext,
-                                                                        audio_only=True if cmd == 'a' else False,
+                                                                        audio_only=True if audio_mode == True else False,
                                                                         format_name=format_name if ext != 'mp4' and format_name != '' else '')
                         if cmd == 'm' and chosen_format.get('ext') != 'mp4' and ffmpeg_av is None and (
                                 video_codec == 'h264' or video_codec == 'hevc') and \
@@ -1173,7 +1175,7 @@ async def _on_message(message, log):
                                     upload_file.close()
 
                         attributes = None
-                        if cmd == 'a':
+                        if audio_mode == True:
                             if performer is None:
                                 performer = entry['artist'] if ('artist' in entry) and \
                                                                (entry['artist'] is not None) else None
@@ -1190,16 +1192,16 @@ async def _on_message(message, log):
                         else:
                             attributes = DocumentAttributeFilename(file_name)
                         force_document = False
-                        if ext != 'mp4' and cmd != 'a':
+                        if ext != 'mp4' and audio_mode == False:
                             force_document = True
                         log.debug('sending file')
-                        video_note = False if cmd == 'a' or force_document else True
-                        voice_note = True if cmd == 'a' else False
+                        video_note = False if audio_mode == True or force_document else True
+                        voice_note = True if audio_mode == True else False
                         attributes = ((attributes,) if not force_document else None)
                         caption = entry['title'] if (user.default_media_type == users.DefaultMediaType.Video.value
-                                                     and user.video_caption and cmd != 'a') or \
+                                                     and user.video_caption and audio_mode == False) or \
                                                     (((user.default_media_type == users.DefaultMediaType.Audio.value) or
-                                                      (cmd == 'a'))
+                                                      (audio_mode == True))
                                                      and user.audio_caption) else ''
                         recover_playlist_index = None
                         _thumb = None

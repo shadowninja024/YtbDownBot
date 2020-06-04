@@ -951,6 +951,24 @@ async def _on_message(message, log):
                                                         reply_to_message_id=msg_id,
                                                         parse_mode='Markdown')
                                 return
+                            if 'unknown' in entry.get('ext', '') or 'php' in entry.get('ext', ''):
+                                mime, cd_file_name = await av_utils.media_mime(entry['url'],
+                                                                               http_headers=http_headers)
+                                if cd_file_name:
+                                    cd_splited_file_name, cd_ext = os.path.splitext(cd_file_name)
+                                    if len(cd_ext) > 0:
+                                        entry['ext'] = cd_ext[1:]
+                                    else:
+                                        entry['ext'] = 'bin'
+                                    if len(cd_splited_file_name) > 0:
+                                        entry['title'] = cd_splited_file_name
+                                else:
+                                    ext = mimetypes.guess_extension(mime)
+                                    if ext is None or ext == '' or ext == '.bin':
+                                        entry['ext'] = 'bin'
+                                    else:
+                                        ext = ext[1:]
+                                        entry['ext'] = ext
                             await upload_multipart_zip(entry.get('url'), http_headers,
                                                        entry['title'] + '.' + entry['ext'], _file_size, chat_id,
                                                        msg_id)

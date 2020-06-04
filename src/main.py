@@ -1017,6 +1017,8 @@ async def _on_message(message, log):
                                 if av_tags is not None and len(av_tags.keys()) > 0:
                                     title = av_tags.get('title')
                                     performer = av_tags.get('artist')
+                                    if performer is None:
+                                        performer = av_tags.get('album')
                                 _av_ext = chosen_format.get('ext', '')
                                 if _av_ext == 'mp3' or _av_ext == 'm4a' or _av_ext == 'ogg' or format_name == 'mp3' or format_name == 'ogg':
                                     audio_mode = True

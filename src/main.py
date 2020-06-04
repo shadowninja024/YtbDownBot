@@ -712,7 +712,8 @@ async def _on_message(message, log):
                             http_headers = formats[0]['http_headers']
                     else:
                         http_headers = entry['http_headers']
-                    http_headers['Referer'] = u
+                    if not entry.get('direct', False):
+                        http_headers['Referer'] = u
 
                     _title = entry.get('title', '')
                     if _title == '':

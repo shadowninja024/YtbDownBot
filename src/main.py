@@ -690,7 +690,7 @@ async def _on_message(message, log):
                         raise
 
                 entries = None
-                if '_type' in vinfo and vinfo['_type'] == 'playlist':
+                if '_type' in vinfo and (vinfo['_type'] == 'playlist' or vinfo['_type'] == 'multi_video'):
                     entries = vinfo['entries']
                 else:
                     entries = [vinfo]
@@ -708,7 +708,7 @@ async def _on_message(message, log):
                     ffmpeg_av = None
                     http_headers = None
                     if 'http_headers' not in entry:
-                        if len(formats) > 0 and 'http_headers' in formats[0]:
+                        if formats is not None and 'http_headers' in formats[0]:
                             http_headers = formats[0]['http_headers']
                     else:
                         http_headers = entry['http_headers']

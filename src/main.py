@@ -1178,6 +1178,11 @@ async def _on_message(message, log):
                             await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
                             log.fatal(e)
                             os.abort()
+                        except ConnectionError as e:
+                            if 'Cannot send requests while disconnected' in str(e):
+                                await client.connect()
+                                continue
+                            raise
                         finally:
                             if ffmpeg_av and ffmpeg_av.file_name:
                                 STORAGE_SIZE += file_size

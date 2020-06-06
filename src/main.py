@@ -358,7 +358,7 @@ def youtube_to_invidio(url, audio=False):
     return u
 
 async def upload_multipart_zip(url, http_headers, name, file_size, chat_id, msg_id):
-    source = av_source.URLavSync.create(url, http_headers)
+    source = await av_source.URLav.create(url, http_headers)
     zfile = zip_file.ZipTorrentContentFile(source, name, file_size)
 
     async def upload_torrent_content(file, chat_id, msg_id):
@@ -381,6 +381,8 @@ async def upload_multipart_zip(url, http_headers, name, file_size, chat_id, msg_
     for i in range(0, zfile.zip_parts):
         await upload_torrent_content(zfile, chat_id, msg_id)
         zfile.zip_num += 1
+
+    await source.close()
 
 #
 # async def ytb_playlist_to_invidious(url, range):
@@ -880,7 +882,10 @@ async def _on_message(message, log):
                                     direct_url = entry['url']
                                     if 'invidio.us' in direct_url:
                                         entry['url'] = normalize_url_path(direct_url)
-                                    _file_size = await av_utils.media_size(direct_url, http_headers=http_headers)
+                                    try:
+                                        _file_size = await av_utils.media_size(direct_url, http_headers=http_headers)
+                                    except:
+                                        _file_size = 1500 * 1024 * 1024
                             if ('m3u8' in entry['protocol'] and
                                     (_file_size <= TG_MAX_FILE_SIZE or cut_time_start is not None)):
                                 chosen_format = entry

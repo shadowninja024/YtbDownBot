@@ -484,7 +484,7 @@ async def _on_message(message, log):
             if not user.donator:
                 await _bot.send_message(chat_id,
                                         'Only *donators* can download playlists\n' +
-                                        'Donate to me at least *1$* to use this feature\n'
+                                        'Donate to me at least *5$* to use this feature\n'
                                         'Send /donate command to get info\n'
                                         'Notify @pony0boy after donation',
                                         reply_to_message_id=msg_id,
@@ -923,7 +923,7 @@ async def _on_message(message, log):
                                             await _bot.send_message(chat_id,
                                                                     'File bigger than *1.5 GB*\n' +
                                                                     'Only *donators* can download files above this limit\n' +
-                                                                    'Donate to me at least *1$* to use this feature\n'
+                                                                    'Donate to me at least *5$* to use this feature\n'
                                                                     'Send /donate command to get info\n'
                                                                     'Notify @pony0boy after donation',
                                                                     reply_to_message_id=msg_id,
@@ -951,7 +951,7 @@ async def _on_message(message, log):
                                 await _bot.send_message(chat_id,
                                                         'File bigger than *1.5 GB*\n' +
                                                         'Only *donators* can download files above this limit\n' +
-                                                        'Donate to me at least *1$* to use this feature\n'
+                                                        'Donate to me at least *5$* to use this feature\n'
                                                         'Send /donate command to get info\n'
                                                         'Notify @pony0boy after donation',
                                                         reply_to_message_id=msg_id,

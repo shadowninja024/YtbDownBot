@@ -252,15 +252,15 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
     part_index = 0
     async for data in stream_file(response, chunk_size=part_size):
         part_index += 1
-        if data == b'':
+        if len(data) == 0:
             part_index -= 1
             break
-        if len(data) != part_size and part_index != part_count:
-            dat = b'\0' * (part_size - len(data))
-            data += dat
+        # if len(data) != part_size and part_index != part_count:
+        #     dat = b'\0' * (part_size - len(data))
+        #     data += dat
         if not is_large:
             hash_md5.update(data)
-        if len(buffer) == 0 and len(data) == part_size:
+        if len(buffer) == 0:
             await uploader.upload(data)
             if part_index >= part_count:
                 break
@@ -281,7 +281,9 @@ async def _internal_transfer_to_telegram(client: TelegramClient,
         else:
             continue
 
-    uploader.senders[0].request.file_total_parts = part_index
+    for u in uploader.senders:
+        u.request.file_total_parts = part_index
+        u.part_count = part_index
     part_count = part_index
 
     if len(buffer) > 0:

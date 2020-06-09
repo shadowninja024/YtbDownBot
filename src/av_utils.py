@@ -114,16 +114,16 @@ async def _media_size(url, session=None, http_headers=None):
         print(e)
 
     # try GET request when HEAD failed
-    if content_length < 100:
-        try:
-            async with _session.get(url, headers=http_headers) as get_resp:
-                if get_resp.status != 200:
-                    raise Exception('Request failed: ' + str(get_resp.status) + " " + responses[get_resp.status])
-                else:
-                    content_length = int(get_resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
-        finally:
-            if session is None:
-                await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
+    try:
+        if content_length < 100:
+                async with _session.get(url, headers=http_headers) as get_resp:
+                    if get_resp.status != 200:
+                        raise Exception('Request failed: ' + str(get_resp.status) + " " + responses[get_resp.status])
+                    else:
+                        content_length = int(get_resp.headers.get(hdrs.CONTENT_LENGTH, '0'))
+    finally:
+        if session is None:
+            await _session.__aexit__(exc_type=None, exc_val=None, exc_tb=None)
 
     return content_length
     # head_req = request.Request(url, method='HEAD', headers=http_headers)

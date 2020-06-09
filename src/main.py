@@ -4,7 +4,7 @@ import sys, os
 from telethon import TelegramClient
 from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio, DocumentAttributeFilename
 from telethon.sessions import StringSession
-from telethon.errors import AuthKeyDuplicatedError
+from telethon.errors import AuthKeyDuplicatedError, BadRequestError
 import traceback
 import asyncio
 import logging
@@ -377,9 +377,12 @@ async def upload_multipart_zip(source, name, file_size, chat_id, msg_id):
             uploaded_file = await client.upload_file(file, file_size=file.size, file_name=file.name)
         await client.send_file(bot_entity, uploaded_file, caption=str(chat_id)+":"+str(msg_id)+":")
 
-    for i in range(0, zfile.zip_parts):
-        await upload_torrent_content(zfile, chat_id, msg_id)
-        zfile.zip_num += 1
+    try:
+        for i in range(0, zfile.zip_parts):
+            await upload_torrent_content(zfile, chat_id, msg_id)
+            zfile.zip_num += 1
+    except BadRequestError as e:
+        logging.error(e)
 
     if source is not None:
         if inspect.iscoroutinefunction(source.close):

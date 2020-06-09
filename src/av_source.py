@@ -86,7 +86,8 @@ class FFMpegAV(DumbReader):
                      cut_time_range=None,
                      ext=None,
                      format_name='',
-                     file_name=None):
+                     file_name=None,
+                     restrict_size=True):
         if headers != '':
             headers = "\n".join(av_utils.dict_to_list(headers))
         ff = FFMpegAV()
@@ -185,6 +186,7 @@ class FFMpegAV(DumbReader):
             cut_time_duration_arg += ['-t', cut_time_end, "-shortest"]
 
         args = _fstream.compile()
+        restrict_file_size_args = ['-fs', '1551892480'] if restrict_size else []
         if aformat:
             # args = _fstream.global_args('headers',
             #                             "\n".join(headers),
@@ -197,13 +199,12 @@ class FFMpegAV(DumbReader):
             if cut_time_start is not None:
                 args = args[:3] + ['-noaccurate_seek', '-ss', cut_time_start] + args[3:5] + ['-headers', headers] + \
                        args[5:-1] + ['-map', '1:v', '-map', '0:a'] + cut_time_duration_arg + \
-                       ['-fs', '1520435200'] + cut_time_fix_args + [args[-1]]
+                       restrict_file_size_args + cut_time_fix_args + [args[-1]]
             else:
-                args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + [
-                    '-fs', '1520435200'] + [args[-1]]
+                args = args[:5] + ['-headers', headers] + args[5:-1] + ['-map', '1:v', '-map', '0:a'] + restrict_file_size_args + [args[-1]]
 
         else:
-            args = args[:-1] + ['-fs', '1520435200'] + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
+            args = args[:-1] + restrict_file_size_args + cut_time_duration_arg + cut_time_fix_args + [args[-1]]
             # if cut_time_start is not None and not audio_only:
             #     args[args.index('-acodec') + 1] = 'copy'  # copy audio if cutting due to music issue
 
@@ -267,6 +268,16 @@ class FFMpegAV(DumbReader):
             os.kill(self.stream.pid, signal.SIGKILL)
         except:
             pass
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        b = await self.read(512 * 1024)
+        if len(b) == 0:
+            raise StopAsyncIteration()
+        else:
+            return b
 
 
 class URLav(DumbReader):

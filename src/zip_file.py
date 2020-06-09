@@ -79,7 +79,7 @@ class ZipTorrentContentFile(Reader):
         file_names_sum = 0
         self.zipstream = zipstream.ZipFile(mode='w', compression=zipstream.ZIP_STORED, allowZip64=True)
         self.zipstream.write_iter(name, file_iter)
-        self.files_size_sum += size if size != 0 else 50 * 1024 * 1024 * 1024
+        self.files_size_sum += size if size != 0 else 100 * 1024 * 1024 * 1024
         file_names_sum += len(name.encode('utf'))
 
         #self.real_size = 21438417 + 205 + 6 #len(files) * (30 + 16 + 46) + 2 * file_names_sum + files_size_sum + 22 + 512

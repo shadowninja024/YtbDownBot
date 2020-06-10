@@ -964,8 +964,7 @@ async def _on_message(message, log):
                         if cmd == 'z':
                             if not user.donator:
                                 await _bot.send_message(chat_id,
-                                                        'File bigger than *1.5 GB*\n' +
-                                                        'Only *donators* can download files above this limit\n' +
+                                                        'Only *donators* can use multipart archiving\n' +
                                                         'Donate to me at least *5$* to use this feature\n'
                                                         'Send /donate command to get info\n'
                                                         'Notify @pony0boy after donation',

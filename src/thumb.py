@@ -45,7 +45,7 @@ def resize_thumb(thumb):
 
     image.thumbnail((n_width, n_height))
     new_image = io.BytesIO()
-    image.save(new_image, format="JPEG", quality=90)
+    image.save(new_image, format="JPEG", quality=99)
     new_image.seek(0)
 
     return new_image

@@ -935,7 +935,7 @@ async def _on_message(message, log):
                                     if 'http' in entry.get('protocol', '') and 'unknown' in entry.get('format', '') and entry.get('ext', '') not in ['unknown_video', 'mp3', 'mp4', 'm4a', 'ogg', 'mkv', 'flv', 'avi', 'webm']:
                                         if not user.donator:
                                             await _bot.send_message(chat_id,
-                                                                    'File bigger than *1.5 GB*\n' +
+                                                                    f'File bigger than *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n' +
                                                                     'Only *donators* can download files above this limit\n' +
                                                                     'Donate to me at least *5$* to use this feature\n'
                                                                     'Send /donate command to get info\n'
@@ -948,7 +948,7 @@ async def _on_message(message, log):
                                     else:
                                         await _bot.send_message(chat_id,
                                                                 f'ERROR: Too big media file size *{sizeof_fmt(_file_size)}*,\n'
-                                                                'Telegram allow only up to *1.5GB*\n'
+                                                                f'Telegram allow only up to *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n'
                                                                 'you can try cut it by command like:\n `/c 0-10:00 ' + u + '`',
                                                                 reply_to_message_id=msg_id,
                                                                 parse_mode="Markdown")

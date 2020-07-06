@@ -5,7 +5,7 @@ import math as m
 import time
 
 
-TG_MAX_FILE_SIZE = 1500*1024*1024
+TG_MAX_FILE_SIZE = 2000*1024*1024
 
 
 class Reader(typing.BinaryIO):

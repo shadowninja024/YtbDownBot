@@ -893,7 +893,7 @@ async def _on_message(message, log):
                                     try:
                                         _file_size = await av_utils.media_size(direct_url, http_headers=http_headers)
                                     except:
-                                        _file_size = 1500 * 1024 * 1024
+                                        _file_size = TG_MAX_FILE_SIZE
                             if ('m3u8' in entry['protocol'] and
                                     (_file_size <= TG_MAX_FILE_SIZE or cut_time_start is not None or cmd == 'z')):
                                 chosen_format = entry
@@ -1324,7 +1324,7 @@ playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
 available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm', 'r', 'z'] + playlist_cmds
 
-TG_MAX_FILE_SIZE = 1500 * 1024 * 1024
+TG_MAX_FILE_SIZE = 2000 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30
 TG_CONNECTIONS_COUNT = 0
 MAX_STORAGE_SIZE = int(os.getenv('STORAGE_SIZE')) * 1024 * 1024

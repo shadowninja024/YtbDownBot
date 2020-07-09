@@ -1,9 +1,8 @@
 #!/bin/python3
 
 import sys, os
-from telethon import TelegramClient
+from telethon import TelegramClient, Button
 from telethon.tl.types import DocumentAttributeVideo, DocumentAttributeAudio, DocumentAttributeFilename
-from telethon.sessions import StringSession
 from telethon.errors import AuthKeyDuplicatedError, BadRequestError
 import traceback
 import asyncio
@@ -17,15 +16,12 @@ import av_utils
 import av_source
 import users
 import cut_time
-import tgaction
 import zip_file
 import thumb
 import io
 import inspect
 import mimetypes
 from datetime import time, timedelta
-from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from requests.exceptions import HTTPError as CloudantHTTPError
 from urllib.error import HTTPError
 from urllib.parse import urlparse, urlunparse
@@ -137,7 +133,9 @@ async def _on_callback(from_id, msg_id, data, user, log):
         await user.set_video_caption(value)
     elif key == '':
         log.info('delete settings menu')
-        await _bot.delete_message(from_id, msg_id)
+
+        _msg = await client.get_messages(from_id, ids=msg_id)
+        await client.delete_messages(from_id, _msg)
         return
 
     await send_settings(user, from_id, msg_id)
@@ -168,22 +166,6 @@ async def task_timeout_cancel(task, timemout=5):
     except asyncio.TimeoutError:
         task.cancel()
 
-
-# share uploaded by client api file to user
-async def share_content_with_user(message, with_reply=True):
-    _user_id, _reply_msg_id, user_caption = message['caption'].split(':', maxsplit=2)
-    user_id = int(_user_id)
-    reply_msg_id = int(_reply_msg_id) if with_reply else None
-    caption = user_caption if user_caption != '' else None
-    if 'video' in message:
-        await _bot.send_video(user_id, message['video']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
-    elif 'audio' in message:
-        await _bot.send_audio(user_id, message['audio']['file_id'], reply_to_message_id=reply_msg_id, caption=caption)
-    elif 'document' in message:
-        await _bot.send_document(user_id, message['document']['file_id'], reply_to_message_id=reply_msg_id,
-                                 caption=caption)
-
-
 async def _on_message_task(message):
     try:
         # async with bot.action(message['chat']['id'], 'file'):
@@ -201,8 +183,7 @@ async def _on_message_task(message):
                 await shutdown()
             else:
                 log.exception(e)
-                await _bot.send_message(chat_id, e.__str__(), reply_to_message_id=msg_id)
-                # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+                await client.send_message(chat_id, e.__str__(), reply_to=msg_id)
         except youtube_dl.DownloadError as e:
             # crashing to try change ip
             # otherwise youtube.com will not allow us
@@ -213,16 +194,14 @@ async def _on_message_task(message):
                     await shutdown()
 
             log.exception(e)
-            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
-            # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+            await client.send_message(chat_id, str(e), reply_to=msg_id)
         except Exception as e:
             log.exception(e)
             if 'ERROR' not in str(e):
                 err_msg = 'ERROR: ' + str(e)
             else:
                 err_msg = str(e)
-            await _bot.send_message(chat_id, err_msg, reply_to_message_id=msg_id)
-            # await bot.send_message(chat_id, e.__str__(), reply_to=msg_id)
+            await client.send_message(chat_id, err_msg, reply_to=msg_id)
     except Exception as e:
         logging.error(e)
 
@@ -258,41 +237,25 @@ async def extract_url_info(ydl, url):
 
 
 async def send_settings(user, user_id, edit_id=None):
-    buttons = None
-    keyboard = InlineKeyboardMarkup(row_width=2)
     if user.default_media_type == users.DefaultMediaType.Video.value:
-        b1 = InlineKeyboardButton('🎬⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Video.value))
-        b2 = InlineKeyboardButton(str(user.video_format) + 'p', callback_data='video_format:' + str(user.video_format))
-        b3 = InlineKeyboardButton('Video caption: ' + ('✅' if user.video_caption else '❎'),
-                                  callback_data='video_caption:' + str(user.video_caption))
-        b4 = InlineKeyboardButton('❌', callback_data=':')
-        keyboard.add(b1, b2, b3, b4)
-        # [Button.inline('🎬⤵️',
-        #                data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
-        #  Button.inline(str(user.video_format) + 'p',
-        #                data='video_format:' + str(user.video_format))],
-        # [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
-        #                data='video_caption:' + str(user.video_caption)),
-        #  Button.inline('❌', data=':')]
+        buttons = [[Button.inline('🎬⤵️',
+                       data='default_media_type:' + str(users.DefaultMediaType.Video.value)),
+         Button.inline(str(user.video_format) + 'p',
+                       data='video_format:' + str(user.video_format))],
+        [Button.inline('Video caption: ' + ('✅' if user.video_caption else '❎'),
+                       data='video_caption:' + str(user.video_caption)),
+         Button.inline('❌', data=':')]]
     else:
-        b1 = InlineKeyboardButton('🎧⤵️', callback_data='default_media_type:' + str(users.DefaultMediaType.Audio.value))
-        b2 = InlineKeyboardButton('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
-                                  callback_data='audio_caption:' + str(user.audio_caption))
-        b3 = InlineKeyboardButton('❌', callback_data=':')
-        keyboard.add(b1, b2, b3)
-        # [Button.inline('🎧⤵️',
-        #                data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
-        #  Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
-        #                data='audio_caption:' + str(user.audio_caption))],
-        # [Button.inline('❌', data=':')]
+        buttons = [[Button.inline('🎧⤵️',
+                       data='default_media_type:' + str(users.DefaultMediaType.Audio.value)),
+         Button.inline('Audio caption: ' + ('✅' if user.audio_caption else '❎'),
+                       data='audio_caption:' + str(user.audio_caption))],
+        [Button.inline('❌', data=':')]]
     if edit_id is None:
-
-        await _bot.send_message(user_id, '⚙SETTINGS', reply_markup=keyboard)
-        # await bot.send_message(user_id, '⚙SETTINGS', buttons=buttons)
+        await client.send_message(user_id, '⚙SETTINGS', buttons=buttons)
     else:
-        await _bot.edit_message_reply_markup(user_id, edit_id, reply_markup=keyboard)
-        # msgs = await bot(functions.messages.GetMessagesRequest(id=[edit_id]))
-        # await bot.edit_message(msgs.messages[0], '⚙SETTINGS', buttons=buttons)
+        _msg = await client.get_messages(user_id, ids=edit_id)
+        await client.edit_message(_msg, '⚙SETTINGS', buttons=buttons)
 
 
 is_ytb_link_re = re.compile(
@@ -324,7 +287,7 @@ async def send_screenshot(user_id, msg_txt, url, http_headers=None):
         return
 
     photo = io.BytesIO(screenshot_data)
-    await _bot.send_photo(user_id, photo)
+    await client.send_file(user_id, photo)
 
 
 def normalize_url_path(url):
@@ -365,8 +328,7 @@ async def upload_multipart_zip(source, name, file_size, chat_id, msg_id):
             uploaded_file = await client.upload_file(file, file_size=file.size, file_name=file.name)
         for i in range(3):
             try:
-                chat = await client.get_input_entity(chat_id)
-                await client.send_file(chat, uploaded_file)
+                await client.send_file(chat_id, uploaded_file)
             except Exception as e:
                 if i >= 2:
                     raise e
@@ -409,8 +371,7 @@ async def _on_message(message, log):
     msg_id = message['message_id']
     chat_id = message['chat']['id']
     if 'text' not in message:
-        await _bot.send_message(chat_id, 'Please send me a video link', reply_to_message_id=msg_id)
-        # await bot.send_message(chat_id, 'Please send me a video link', reply_to=msg_id)
+        await client.send_message(chat_id, 'Please send me a video link', reply_to=msg_id)
         return
     msg_txt = message['text']
 
@@ -423,90 +384,62 @@ async def _on_message(message, log):
     y_format = None
     audio_mode = False
 
-    if cmd == 'r':
-        reply_to_message = message.get('reply_to_message')
-        if not reply_to_message:
-            await _bot.send_message(chat_id, 'Please forward to me media file then reply to it\n'
-                                             'and provide me caption you want me add, like: /r hello this my new caption',
-                                    reply_to_message_id=msg_id)
-            return
-
-        msg_txt_no_cmd = msg_txt[message['entities'][0]['length'] + message['entities'][0]['offset']:]
-        if msg_txt_no_cmd == '':
-            msg_txt_no_cmd = None
-        if 'video' in reply_to_message:
-            file = reply_to_message['video']
-            file_id = file['file_id']
-            await _bot.send_video(chat_id, file_id, caption=msg_txt_no_cmd)
-        elif 'audio' in reply_to_message:
-            file = reply_to_message['audio']
-            file_id = file['file_id']
-            await _bot.send_audio(chat_id, file_id, caption=msg_txt_no_cmd)
-        elif 'document' in reply_to_message:
-            file = reply_to_message['document']
-            file_id = file['file_id']
-            await _bot.send_document(chat_id, file_id, caption=msg_txt_no_cmd)
-        return
-
     user = None
     # check cmd and choose video format
     cut_time_start = cut_time_end = None
     if cmd is not None:
         if cmd not in available_cmds:
-            await _bot.send_message(chat_id, 'Wrong command', reply_to_message_id=msg_id)
-            # await bot.send_message(chat_id, 'Wrong command', reply_to=msg_id)
+            await client.send_message(chat_id, 'Wrong command', reply_to=msg_id)
             return
         elif cmd == 'start':
-            await _bot.send_message(chat_id, 'Send me a video link')
-            # await bot.send_message(chat_id, 'Send me a video links')
+            await client.send_message(chat_id, 'Send me a video links')
             return
         elif cmd == 'c':
             try:
                 cut_time_start, cut_time_end = cut_time.parse_time(msg_txt)
             except Exception as e:
                 if 'Wrong time format' == str(e):
-                    await _bot.send_message(chat_id,
+                    await client.send_message(chat_id,
                                             'Wrong time format, correct example: `/c 10:23-1:12:4 youtube.com`',
-                                            parse_mode='Markdown')
+                                            parse_mode='markdown')
                     return
                 else:
                     raise
         elif cmd == 'ping':
-            await _bot.send_message(chat_id, 'pong')
-            # await bot.send_message(chat_id, 'pong')
+            await client.send_message(chat_id, 'pong')
             return
         elif cmd == 'settings':
             user = await users.User.init(chat_id)
             await send_settings(user, chat_id)
             return
         elif cmd == 'donate':
-            await _bot.send_message(chat_id, os.getenv('DONATE_INFO', ''), parse_mode='Markdown')
+            await client.send_message(chat_id, os.getenv('DONATE_INFO', ''), parse_mode='markdown')
             return
         elif cmd in playlist_cmds:
             user = await users.User.init(chat_id)
             if not user.donator:
-                await _bot.send_message(chat_id,
+                await client.send_message(chat_id,
                                         'Only *donators* can download playlists\n' +
                                         'Donate to me at least *5$* to use this feature\n'
                                         'Send /donate command to get info\n'
                                         'Notify @pony0boy after donation',
-                                        reply_to_message_id=msg_id,
-                                        parse_mode='Markdown')
+                                        reply_to=msg_id,
+                                        parse_mode='markdown')
                 return
             urls_count = len(urls)
             if urls_count != 1:
-                await _bot.send_message(chat_id,
+                await client.send_message(chat_id,
                                         'Wrong command arguments. Correct example: `/' + cmd + " 2-4 youtube.com/playlist`",
-                                        reply_to_message_id=msg_id,
-                                        parse_mode='Markdown')
+                                        reply_to=msg_id,
+                                        parse_mode='markdown')
                 # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /' + cmd + " 2-4 youtube.com", reply_to=msg_id)
                 return
             range_match = playlist_range_re.search(msg_txt)
             if range_match is None:
-                await _bot.send_message(chat_id,
+                await client.send_message(chat_id,
                                         'Wrong message format, correct example: `/' + cmd + " 4-9 " + 'youtube.com/playlist`',
-                                        reply_to_message_id=msg_id,
-                                        parse_mode='Markdown')
+                                        reply_to=msg_id,
+                                        parse_mode='markdown')
                 # await bot.send_message(chat_id,
                 #                        'Wrong message format, correct example: /' + cmd + " 4-9 " + urls[0],
                 #                        reply_to=msg_id)
@@ -515,15 +448,15 @@ async def _on_message(message, log):
             playlist_start = int(_start)
             playlist_end = int(_end)
             if playlist_start >= playlist_end:
-                await _bot.send_message(chat_id, 'Not correct format, start number must be less then end',
-                                        reply_to_message_id=msg_id)
+                await client.send_message(chat_id, 'Not correct format, start number must be less then end',
+                                        reply_to=msg_id)
                 # await bot.send_message(chat_id,
                 #                        'Not correct format, start number must be less then end',
                 #                        reply_to=msg_id)
                 return
             elif playlist_end - playlist_start > 50:
-                await _bot.send_message(chat_id, 'Too big range. Allowed range is less or equal 50 videos',
-                                        reply_to_message_id=msg_id)
+                await client.send_message(chat_id, 'Too big range. Allowed range is less or equal 50 videos',
+                                        reply_to=msg_id)
                 # await bot.send_message(chat_id,
                 #                        'Too big range. Allowed range is less or equal 50 videos',
                 #                        reply_to=msg_id)
@@ -540,32 +473,27 @@ async def _on_message(message, log):
 
     if len(urls) == 0:
         if cmd == 'a':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/a youtube.com`',
-                                    reply_to_message_id=msg_id,
-                                    parse_mode='Markdown')
-            # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /a youtube.com',
-            #                        reply_to=msg_id)
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/a youtube.com`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         elif cmd == 'w':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/w youtube.com`',
-                                    reply_to_message_id=msg_id,
-                                    parse_mode='Markdown')
-            # await bot.send_message(chat_id, 'Wrong command arguments. Correct example: /w youtube.com',
-            #                        reply_to=msg_id)
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/w youtube.com`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         elif cmd == 's':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/s 23:14 youtube.com`',
-                                    reply_to_message_id=msg_id,
-                                    parse_mode='Markdown')
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/s 23:14 youtube.com`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         elif cmd == 't':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/t youtube.com`',
-                                    reply_to_message_id=msg_id,
-                                    parse_mode='Markdown')
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/t youtube.com`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         elif cmd == 'm':
-            await _bot.send_message(chat_id, 'Wrong command arguments. Correct example: `/m nonyoutube.com`',
-                                    reply_to_message_id=msg_id,
-                                    parse_mode='Markdown')
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/m nonyoutube.com`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         else:
-            await _bot.send_message(chat_id, 'Please send me link to the video', reply_to_message_id=msg_id)
-            # await bot.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
+            await client.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         log.info('Message without url: ' + msg_txt)
         return
 
@@ -594,8 +522,7 @@ async def _on_message(message, log):
 
     # if len(urls) == 1 and 'youtube.com/playlist?list=' in urls[0] and playlist_start is not None:
     #     urls = await ytb_playlist_to_invidious(urls[0], (playlist_start,playlist_end))
-
-    async with tgaction.TGAction(_bot, chat_id, "upload_document"):
+    async with client.action(chat_id, "file"):
         urls = set(urls)
         for iu, u in enumerate(urls):
             vinfo = None
@@ -668,13 +595,11 @@ async def _on_message(message, log):
                                 vinfo = await extract_url_info(ydl, u)
                             except Exception as e:
                                 log.error(e)
-                                await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
-                                # await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                                await client.send_message(chat_id, str(e), reply_to=msg_id)
                                 continue
                         else:
                             log.error(e)
-                            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
-                            # await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                            await client.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     elif 'are video-only' in str(e):
                         params['format'] = 'bestvideo[ext=mp4]'
@@ -683,13 +608,12 @@ async def _on_message(message, log):
                             vinfo = await extract_url_info(ydl, u)
                         except Exception as e:
                             log.error(e)
-                            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
-                            # await bot.send_message(chat_id, str(e), reply_to=msg_id)
+                            await client.send_message(chat_id, str(e), reply_to=msg_id)
                             continue
                     else:
                         if iu < len(urls) - 1:
                             log.error(e)
-                            await _bot.send_message(chat_id, str(e), reply_to_message_id=msg_id)
+                            await client.send_message(chat_id, str(e), reply_to=msg_id)
                             break
 
                         raise
@@ -703,7 +627,7 @@ async def _on_message(message, log):
                 for ie, entry in enumerate(entries):
                     if entry is None:
                         try:
-                            await _bot.send_message(chat_id, f'WARN: #{params["playliststart"] + ie} was skipped due to error', reply_to_message_id=msg_id)
+                            await client.send_message(chat_id, f'WARN: #{params["playliststart"] + ie} was skipped due to error', reply_to=msg_id)
                         except:
                             pass
                         continue
@@ -737,9 +661,9 @@ async def _on_message(message, log):
                     if cmd == 't':
                         thumb_url = entry.get('thumbnail')
                         if thumb_url:
-                            await _bot.send_photo(chat_id, thumb_url)
+                            await client.send_file(chat_id, thumb_url)
                         else:
-                            await _bot.send_message(chat_id, 'Media don\'t contain thumbnail')
+                            await client.send_message(chat_id, 'Media don\'t contain thumbnail')
 
                         return
 
@@ -932,28 +856,28 @@ async def _on_message(message, log):
                                     log.info('too big file ' + str(_file_size))
                                     if 'http' in entry.get('protocol', '') and 'unknown' in entry.get('format', '') and entry.get('ext', '') not in ['unknown_video', 'mp3', 'mp4', 'm4a', 'ogg', 'mkv', 'flv', 'avi', 'webm']:
                                         if not user.donator:
-                                            await _bot.send_message(chat_id,
+                                            await client.send_message(chat_id,
                                                                     f'File bigger than *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n' +
                                                                     'Only *donators* can download files above this limit\n' +
                                                                     'Donate to me at least *5$* to use this feature\n'
                                                                     'Send /donate command to get info\n'
                                                                     'Notify @pony0boy after donation',
-                                                                    reply_to_message_id=msg_id,
-                                                                    parse_mode='Markdown')
+                                                                    reply_to=msg_id,
+                                                                    parse_mode='markdown')
                                             return
                                         source = await av_source.URLav.create(entry.get('url'), http_headers)
                                         await upload_multipart_zip(source, entry['title']+'.'+entry['ext'], _file_size, chat_id, msg_id)
                                     else:
-                                        await _bot.send_message(chat_id,
+                                        await client.send_message(chat_id,
                                                                 f'ERROR: Too big media file size *{sizeof_fmt(_file_size)}*,\n'
                                                                 f'Telegram allow only up to *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n'
                                                                 'you can try cut it by command like:\n `/c 0-10:00 ' + u + '`',
-                                                                reply_to_message_id=msg_id,
-                                                                parse_mode="Markdown")
+                                                                reply_to=msg_id,
+                                                                parse_mode="markdown")
                                 else:
                                     log.info('failed find suitable media format')
-                                    await _bot.send_message(chat_id, "ERROR: Failed find suitable media format",
-                                                            reply_to_message_id=msg_id)
+                                    await client.send_message(chat_id, "ERROR: Failed find suitable media format",
+                                                            reply_to=msg_id)
                                 # await bot.send_message(chat_id, "ERROR: Failed find suitable video format", reply_to=msg_id)
                                 return
                             # if 'playlist' in entry and entry['playlist'] is not None:
@@ -961,13 +885,13 @@ async def _on_message(message, log):
                             break
                         if cmd == 'z':
                             if not user.donator:
-                                await _bot.send_message(chat_id,
+                                await client.send_message(chat_id,
                                                         'Only *donators* can use multipart archiving\n' +
                                                         'Donate to me at least *5$* to use this feature\n'
                                                         'Send /donate command to get info\n'
                                                         'Notify @pony0boy after donation',
-                                                        reply_to_message_id=msg_id,
-                                                        parse_mode='Markdown')
+                                                        reply_to=msg_id,
+                                                        parse_mode='markdown')
                                 return
                             if 'unknown' in entry.get('ext', '') or 'php' in entry.get('ext', ''):
                                 mime, cd_file_name = await av_utils.media_mime(entry['url'],
@@ -1099,19 +1023,19 @@ async def _on_message(message, log):
                         if cut_time_start is not None:
                             if not entry.get('is_live') and duration > 1:
                                 if cut_time.time_to_seconds(cut_time_start) > duration:
-                                    await _bot.send_message(chat_id,
+                                    await client.send_message(chat_id,
                                                             'ERROR: Cut start time is bigger than media duration: *' + str(
                                                                 timedelta(seconds=duration)) + '*',
-                                                            parse_mode='Markdown')
+                                                            parse_mode='markdown')
                                     return
                                 elif cut_time_end is not None and (
                                         cut_time.time_to_seconds(cut_time_end) > duration != 0):
-                                    await _bot.send_message(chat_id,
+                                    await client.send_message(chat_id,
                                                             'ERROR: Cut end time is bigger than media duration: *' + str(
                                                                 timedelta(seconds=duration)) + '*\n'
                                                                                                'You can eliminate end time if you want it to be equal to media duration\n'
                                                                                                'Like: `/c 1:24 youtube.com`',
-                                                            parse_mode='Markdown')
+                                                            parse_mode='markdown')
                                     return
                             if cut_time_end is None:
                                 if duration == 0:
@@ -1194,7 +1118,7 @@ async def _on_message(message, log):
                                                                 file_size=file_size,
                                                                 http_headers=http_headers)
                         except AuthKeyDuplicatedError as e:
-                            await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                            await client.send_message(chat_id, 'INTERNAL ERROR: try again')
                             log.fatal(e)
                             os.abort()
                         except ConnectionError as e:
@@ -1262,8 +1186,7 @@ async def _on_message(message, log):
 
                         for i in range(3):
                             try:
-                                chat = await client.get_input_entity(chat_id)
-                                await client.send_file(chat, file,
+                                await client.send_file(chat_id, file,
                                                        video_note=video_note,
                                                        voice_note=voice_note,
                                                        attributes=attributes,
@@ -1272,7 +1195,7 @@ async def _on_message(message, log):
                                                        supports_streaming=False if ffmpeg_av is not None else True,
                                                        thumb=_thumb)
                             except AuthKeyDuplicatedError as e:
-                                await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                                await client.send_message(chat_id, 'INTERNAL ERROR: try again')
                                 log.fatal(e)
                                 os.abort()
                             except Exception as e:
@@ -1284,7 +1207,7 @@ async def _on_message(message, log):
 
                             break
                     except AuthKeyDuplicatedError as e:
-                        await _bot.send_message(chat_id, 'INTERNAL ERROR: try again')
+                        await client.send_message(chat_id, 'INTERNAL ERROR: try again')
                         log.fatal(e)
                         os.abort()
                     except Exception as e:
@@ -1309,8 +1232,6 @@ api_hash = "eb06d4abfb49dc3eeb1aeb98ae0f581e"
 # YTDL_LAMBDA_SECRET = os.environ['YTDL_LAMBDA_SECRET']
 
 client = TelegramClient("bot", api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
-# bot = TelegramClient('bot', api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
-_bot = Bot(token=os.environ['BOT_TOKEN'])
 
 vid_format = '((best[ext=mp4,height<=1080]+best[ext=mp4,height<=480])[protocol^=http]/best[ext=mp4,height<=1080]+best[ext=mp4,height<=480]/best[ext=mp4]+worst[ext=mp4]/best[ext=mp4]/(bestvideo[ext=mp4,height<=1080]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]))[protocol^=http]/bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
 vid_fhd_format = '((best[ext=mp4][height<=1080][height>720])[protocol^=http]/best[ext=mp4][height<=1080][height>720]/  (bestvideo[ext=mp4][height<=1080][height>720]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=1080][height>720])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=1080][height>720]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/  (best[ext=mp4][height<=720][height>360])[protocol^=http]/best[ext=mp4][height<=720][height>360]/  (bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=720][height>360])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio) /  (best[ext=mp4][height<=360])[protocol^=http]/best[ext=mp4][height<=360]/  (bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=360])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/   best[ext=mp4]   /bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/best)[protocol!=http_dash_segments][vcodec !^=? av01]'
@@ -1323,7 +1244,7 @@ url_extractor = URLExtract()
 
 playlist_range_re = re.compile('([0-9]+)-([0-9]+)')
 playlist_cmds = ['p', 'pa', 'pw']
-available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm', 'r', 'z'] + playlist_cmds
+available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't', 'm', 'z'] + playlist_cmds
 
 TG_MAX_FILE_SIZE = 2000 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30
@@ -1333,7 +1254,7 @@ STORAGE_SIZE = MAX_STORAGE_SIZE
 
 
 async def shutdown():
-    await client.disconnect()
+    await tg_client_shutdown()
     sys.exit(1)
 
 

@@ -136,10 +136,8 @@ async def _on_callback(from_id, msg_id, data, user, log):
         log.info('set video captions to {}'.format(value))
         await user.set_video_caption(value)
     elif key == '':
-        global bot_entity
         log.info('delete settings menu')
         await _bot.delete_message(from_id, msg_id)
-        # await bot.delete_messages(bot_entity, msg_id)
         return
 
     await send_settings(user, from_id, msg_id)
@@ -154,16 +152,6 @@ async def on_message(request):
             return web.Response(status=200)
 
         message = req_data['message']
-        if message['from']['id'] == BOT_AGENT_CHAT_ID:
-            try:
-                await share_content_with_user(message)
-            except Exception as e:
-                if 'Reply message not found' in str(e):
-                    await share_content_with_user(message, with_reply=False)
-                else:
-                    print(e)
-                    traceback.print_exc()
-            return web.Response(status=200)
 
         msg_task = asyncio.get_event_loop().create_task(_on_message_task(message))
         asyncio.get_event_loop().create_task(task_timeout_cancel(msg_task, timemout=21600))
@@ -375,7 +363,17 @@ async def upload_multipart_zip(source, name, file_size, chat_id, msg_id):
                 TG_CONNECTIONS_COUNT -= 2
         else:
             uploaded_file = await client.upload_file(file, file_size=file.size, file_name=file.name)
-        await client.send_file(bot_entity, uploaded_file, caption=str(chat_id)+":"+str(msg_id)+":")
+        for i in range(3):
+            try:
+                chat = await client.get_input_entity(chat_id)
+                await client.send_file(chat, uploaded_file)
+            except Exception as e:
+                if i >= 2:
+                    raise e
+                print(e)
+                await asyncio.sleep(1 * i)
+                continue
+            break
 
     try:
         for i in range(0, zfile.zip_parts):
@@ -1262,13 +1260,14 @@ async def _on_message(message, log):
                         except Exception as e:
                             log.warning('failed get thumbnail: ' + str(e))
 
-                        for i in range(10):
+                        for i in range(3):
                             try:
-                                await client.send_file(bot_entity, file,
+                                chat = await client.get_input_entity(chat_id)
+                                await client.send_file(chat, file,
                                                        video_note=video_note,
                                                        voice_note=voice_note,
                                                        attributes=attributes,
-                                                       caption=str(chat_id) + ":" + str(msg_id) + ":" + caption,
+                                                       caption=caption,
                                                        force_document=force_document,
                                                        supports_streaming=False if ffmpeg_av is not None else True,
                                                        thumb=_thumb)
@@ -1277,8 +1276,10 @@ async def _on_message(message, log):
                                 log.fatal(e)
                                 os.abort()
                             except Exception as e:
+                                if i >= 2:
+                                    raise e
                                 log.exception(e)
-                                await asyncio.sleep(1)
+                                await asyncio.sleep(1*i)
                                 continue
 
                             break
@@ -1298,18 +1299,18 @@ async def _on_message(message, log):
                     break
 
 
-api_id = int(os.environ['API_ID'])
-api_hash = os.environ['API_HASH']
+# api_id = int(os.environ['API_ID'])
+api_id = 6
+# api_hash = os.environ['API_HASH']
+api_hash = "eb06d4abfb49dc3eeb1aeb98ae0f581e"
 
-BOT_AGENT_CHAT_ID = int(os.environ['BOT_AGENT_CHAT_ID'])
 
 # YTDL_LAMBDA_URL = os.environ['YTDL_LAMBDA_URL']
 # YTDL_LAMBDA_SECRET = os.environ['YTDL_LAMBDA_SECRET']
 
-client = TelegramClient(StringSession(get_client_session()), api_id, api_hash)
+client = TelegramClient("bot", api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
 # bot = TelegramClient('bot', api_id, api_hash).start(bot_token=os.environ['BOT_TOKEN'])
 _bot = Bot(token=os.environ['BOT_TOKEN'])
-bot_entity = None
 
 vid_format = '((best[ext=mp4,height<=1080]+best[ext=mp4,height<=480])[protocol^=http]/best[ext=mp4,height<=1080]+best[ext=mp4,height<=480]/best[ext=mp4]+worst[ext=mp4]/best[ext=mp4]/(bestvideo[ext=mp4,height<=1080]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]))[protocol^=http]/bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4])/best)[protocol!=http_dash_segments]'
 vid_fhd_format = '((best[ext=mp4][height<=1080][height>720])[protocol^=http]/best[ext=mp4][height<=1080][height>720]/  (bestvideo[ext=mp4][height<=1080][height>720]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=1080][height>720])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=1080][height>720]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/  (best[ext=mp4][height<=720][height>360])[protocol^=http]/best[ext=mp4][height<=720][height>360]/  (bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=720][height>360])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=720][height>360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio) /  (best[ext=mp4][height<=360])[protocol^=http]/best[ext=mp4][height<=360]/  (bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio))[protocol^=http]/(bestvideo[ext=mp4][height<=360])[protocol^=http]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/bestvideo[ext=mp4][height<=360]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/   best[ext=mp4]   /bestvideo[ext=mp4]+(bestaudio[ext=mp3]/bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio)/best)[protocol!=http_dash_segments][vcodec !^=? av01]'
@@ -1327,16 +1328,8 @@ available_cmds = ['start', 'ping', 'donate', 'settings', 'a', 'w', 'c', 's', 't'
 TG_MAX_FILE_SIZE = 2000 * 1024 * 1024
 TG_MAX_PARALLEL_CONNECTIONS = 30
 TG_CONNECTIONS_COUNT = 0
-MAX_STORAGE_SIZE = int(os.getenv('STORAGE_SIZE')) * 1024 * 1024
+MAX_STORAGE_SIZE = int(os.getenv('STORAGE_SIZE', 0)) * 1024 * 1024
 STORAGE_SIZE = MAX_STORAGE_SIZE
-
-
-async def init_bot_enitty():
-    try:
-        global bot_entity
-        bot_entity = await client.get_input_entity(os.environ['CHAT_WITH_BOT_ID'])
-    except Exception as e:
-        print(e)
 
 
 async def shutdown():
@@ -1358,7 +1351,6 @@ if __name__ == '__main__':
     app.add_routes([web.post('/bot', on_message)])
     client.start()
     # asyncio.get_event_loop().create_task(bot._run_until_disconnected())
-    asyncio.get_event_loop().create_task(init_bot_enitty())
     asyncio.get_event_loop().add_signal_handler(signal.SIGABRT, sig_handler)
     asyncio.get_event_loop().add_signal_handler(signal.SIGTERM, sig_handler)
     asyncio.get_event_loop().add_signal_handler(signal.SIGHUP, sig_handler)

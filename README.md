@@ -15,22 +15,7 @@ For running required phone number for bypassing telegram bot api upload files li
 Set the following enviroment variables:
   1. Bot token(from Bot Father):
 `BOT_API_TOKEN`
-
-  2. Chat id between bot and agent (regular client with phone number 
-for bypass limit in 50MB):
-`BOT_AGENT_CHAT_ID`
-
-  3. Chat id between agent(regular client with phone number 
-for bypass limit in 50MB) and bot:
-`CHAT_WITH_BOT_ID`
-
-  4. Api id (https://core.telegram.org/api/obtaining_api_id):
-`API_ID`
-  5. Api hash (https://core.telegram.org/api/obtaining_api_id):
-`API_HASH`
-  6. Telegram client session string for telethon StringSession:
-  `CLIENT_SESSION`
-  7. IBM Cloudant credentials: 
+  2. IBM Cloudant credentials: 
   `CLOUDANT_USERNAME`, `CLOUDANT_PASSWORD`, `CLOUDANT_URL`
   (can be easily replaced with CouchDB: read https://python-cloudant.readthedocs.io/en/latest/getting_started.html)
 

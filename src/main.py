@@ -287,7 +287,7 @@ async def send_screenshot(user_id, msg_txt, url, http_headers=None):
         return
 
     photo = io.BytesIO(screenshot_data)
-    await client.send_file(user_id, photo, attributes=[DocumentAttributeFilename("default.jpeg")])
+    await client.send_file(user_id, photo, attributes=[DocumentAttributeFilename("default.jpg")])
 
 
 def normalize_url_path(url):

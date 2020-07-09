@@ -492,6 +492,10 @@ async def _on_message(message, log):
             await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/m nonyoutube.com`',
                                     reply_to=msg_id,
                                     parse_mode='markdown')
+        elif cmd == 'z':
+            await client.send_message(chat_id, 'Wrong command arguments. Correct example: `/z example.com/file.mp4`',
+                                    reply_to=msg_id,
+                                    parse_mode='markdown')
         else:
             await client.send_message(chat_id, 'Please send me link to the video', reply_to=msg_id)
         log.info('Message without url: ' + msg_txt)

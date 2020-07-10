@@ -419,12 +419,12 @@ async def _on_message(message, log):
             user = await users.User.init(chat_id)
             if not user.donator:
                 await client.send_message(chat_id,
-                                        'Only *donators* can download playlists\n' +
-                                        'Donate to me at least *5$* to use this feature\n'
+                                        'Only <b>donators</b> can download playlists\n' +
+                                        'Donate to me at least <b>5$</b> to use this feature\n'
                                         'Send /donate command to get info\n'
                                         'Notify @pony0boy after donation',
                                         reply_to=msg_id,
-                                        parse_mode='markdown')
+                                        parse_mode='html')
                 return
             urls_count = len(urls)
             if urls_count != 1:
@@ -861,23 +861,23 @@ async def _on_message(message, log):
                                     if 'http' in entry.get('protocol', '') and 'unknown' in entry.get('format', '') and entry.get('ext', '') not in ['unknown_video', 'mp3', 'mp4', 'm4a', 'ogg', 'mkv', 'flv', 'avi', 'webm']:
                                         if not user.donator:
                                             await client.send_message(chat_id,
-                                                                    f'File bigger than *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n' +
-                                                                    'Only *donators* can download files above this limit\n' +
-                                                                    'Donate to me at least *5$* to use this feature\n'
+                                                                    f'File bigger than <b>{sizeof_fmt(TG_MAX_FILE_SIZE)}</b>\n' +
+                                                                    'Only <b>donators</b> can download files above this limit\n' +
+                                                                    'Donate to me at least <b>5$</b> to use this feature\n'
                                                                     'Send /donate command to get info\n'
                                                                     'Notify @pony0boy after donation',
                                                                     reply_to=msg_id,
-                                                                    parse_mode='markdown')
+                                                                    parse_mode='html')
                                             return
                                         source = await av_source.URLav.create(entry.get('url'), http_headers)
                                         await upload_multipart_zip(source, entry['title']+'.'+entry['ext'], _file_size, chat_id, msg_id)
                                     else:
                                         await client.send_message(chat_id,
-                                                                f'ERROR: Too big media file size *{sizeof_fmt(_file_size)}*,\n'
-                                                                f'Telegram allow only up to *{sizeof_fmt(TG_MAX_FILE_SIZE)}*\n'
-                                                                'you can try cut it by command like:\n `/c 0-10:00 ' + u + '`',
+                                                                f'ERROR: Too big media file size <b>{sizeof_fmt(_file_size)}</b>,\n'
+                                                                f'Telegram allow only up to <b>{sizeof_fmt(TG_MAX_FILE_SIZE)}</b>\n'
+                                                                'you can try cut it by command like:\n <code>/c 0-10:00 ' + u + '</code>',
                                                                 reply_to=msg_id,
-                                                                parse_mode="markdown")
+                                                                parse_mode="html")
                                 else:
                                     log.info('failed find suitable media format')
                                     await client.send_message(chat_id, "ERROR: Failed find suitable media format",
@@ -890,12 +890,12 @@ async def _on_message(message, log):
                         if cmd == 'z':
                             if not user.donator:
                                 await client.send_message(chat_id,
-                                                        'Only *donators* can use multipart archiving\n' +
-                                                        'Donate to me at least *5$* to use this feature\n'
+                                                        'Only <b>donators</b> can use multipart archiving\n' +
+                                                        'Donate to me at least <b>5$</b> to use this feature\n'
                                                         'Send /donate command to get info\n'
                                                         'Notify @pony0boy after donation',
                                                         reply_to=msg_id,
-                                                        parse_mode='markdown')
+                                                        parse_mode='html')
                                 return
                             if 'unknown' in entry.get('ext', '') or 'php' in entry.get('ext', ''):
                                 mime, cd_file_name = await av_utils.media_mime(entry['url'],
@@ -1028,18 +1028,18 @@ async def _on_message(message, log):
                             if not entry.get('is_live') and duration > 1:
                                 if cut_time.time_to_seconds(cut_time_start) > duration:
                                     await client.send_message(chat_id,
-                                                            'ERROR: Cut start time is bigger than media duration: *' + str(
-                                                                timedelta(seconds=duration)) + '*',
-                                                            parse_mode='markdown')
+                                                            'ERROR: Cut start time is bigger than media duration: <b>' + str(
+                                                                timedelta(seconds=duration)) + '</b>',
+                                                            parse_mode='html')
                                     return
                                 elif cut_time_end is not None and (
                                         cut_time.time_to_seconds(cut_time_end) > duration != 0):
                                     await client.send_message(chat_id,
-                                                            'ERROR: Cut end time is bigger than media duration: *' + str(
-                                                                timedelta(seconds=duration)) + '*\n'
+                                                            'ERROR: Cut end time is bigger than media duration: <b>' + str(
+                                                                timedelta(seconds=duration)) + '</b>\n'
                                                                                                'You can eliminate end time if you want it to be equal to media duration\n'
-                                                                                               'Like: `/c 1:24 youtube.com`',
-                                                            parse_mode='markdown')
+                                                                                               'Like: <code>/c 1:24 youtube.com</code>',
+                                                            parse_mode='html')
                                     return
                             if cut_time_end is None:
                                 if duration == 0:
